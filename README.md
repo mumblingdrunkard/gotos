@@ -8,6 +8,8 @@ Built around emulating a RISC-V CPU.
 
 ### Emulation
 
+#### riscv64g target
+
 - [ ] RV32I base instructions
 - [ ] RV64I base instructions
 - [ ] RV32M extension
@@ -16,8 +18,13 @@ Built around emulating a RISC-V CPU.
 - [ ] RV64A extension
 - [ ] RV32F extension
 - [ ] RV64F extension
+- [ ] RV32D extension
+- [ ] RV64D extension
 - [ ] Zicsr extension
 - [ ] Zifencei extension
+- [ ] C extension (compressed instructions)
+
+#### Peripherals
 
 - [ ] MMIO
 
