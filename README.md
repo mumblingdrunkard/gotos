@@ -8,21 +8,21 @@ Built around emulating a RISC-V CPU.
 
 ### Emulation
 
-#### riscv64g target
+#### riscv64gc target
 
-- [ ] RV32I base instructions
-- [ ] RV64I base instructions
-- [ ] RV32M extension
-- [ ] RV64M extension
-- [ ] RV32A extension
-- [ ] RV64A extension
-- [ ] RV32F extension
-- [ ] RV64F extension
-- [ ] RV32D extension
-- [ ] RV64D extension
-- [ ] Zicsr extension
-- [ ] Zifencei extension
-- [ ] C extension (compressed instructions)
+- [ ] RV32I base instructions (40)
+- [ ] RV64I base instructions (15)
+- [ ] RV32M extension (8)
+- [ ] RV64M extension (13)
+- [ ] RV32A extension (11)
+- [ ] RV64A extension (22)
+- [ ] RV32F extension (26)
+- [ ] RV64F extension (30)
+- [ ] RV32D extension (26)
+- [ ] RV64D extension (32)
+- [ ] Zicsr extension (6)
+- [ ] Zifencei extension (1)
+- [ ] C extension (40)
 
 #### Peripherals
 
@@ -30,6 +30,7 @@ Built around emulating a RISC-V CPU.
 
 ### OS
 
+- [ ] Syscalls
 - [ ] Synchronization primitives
 - [ ] C standard library
 - [ ] Scheduler framework
