@@ -29,7 +29,7 @@ func (cpu *CPU) beq(rs1, rs2, unknown uint32) {
 
 func (cpu *CPU) blt(rs1, rs2, unknown uint32) {
 	// TODO
-	// branch equal
+	// branch less than
 }
 
 func (cpu *CPU) bge(rs1, rs2, unknown uint32) {
@@ -125,7 +125,7 @@ func (cpu *CPU) sub(rd, rs1, rs2 uint32) {
 
 func (cpu *CPU) xori(rd, rs1, immi uint32) {
 	// TODO
-	// xor immediate
+	cpu.reg[rd] = cpu.reg[rs1] ^ uint64(immi)
 }
 
 func (cpu *CPU) ori(rd, rs1, immi uint32) {
