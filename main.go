@@ -3,54 +3,60 @@ package main
 import (
 	"fmt"
 	"gotos/cpu"
-	"os"
 	"sync"
 	"time"
 )
 
 func main() {
-	var wg sync.WaitGroup
-
-	core := cpu.NewCPU()
-
-	file, err := os.Open("add-addi.bin")
-
-	if err != nil {
-		panic(err)
-	}
-
-	program := make([]byte, 128)
-	_, err = file.Read(program)
-
-	if err != nil {
-		panic(err)
-	}
-
-	core.Reset()
-	core.LoadMemory(program, 0)
+	core1 := cpu.NewCore()
+	core2 := cpu.NewCore()
+	core3 := cpu.NewCore()
+	core4 := cpu.NewCore()
 
 	fmt.Println("Starting core...")
 
-	wg.Add(1)
-	go core.Start(&wg)
+	var wg sync.WaitGroup
+
+	core1.StartAndSync(&wg)
+	core2.StartAndSync(&wg)
+	core3.StartAndSync(&wg)
+	core4.StartAndSync(&wg)
 
 	fmt.Println("Running...")
 
-	time.Sleep(1 * time.Millisecond)
-	core.Stop()
+	time.Sleep(1000 * time.Millisecond)
 
 	fmt.Println("Waiting for core to finish...")
-	wg.Wait()
+
+	core1.HaltAndSync(&wg)
+	core2.HaltAndSync(&wg)
+	core3.HaltAndSync(&wg)
+	core4.HaltAndSync(&wg)
 
 	fmt.Println("Done!")
 
-	state := core.GetState()
+	state1 := core1.UnsafeGetState()
+	state2 := core2.UnsafeGetState()
+	state3 := core3.UnsafeGetState()
+	state4 := core4.UnsafeGetState()
 
 	fmt.Println()
-	fmt.Println("Register dump:")
-	for i, val := range state.Reg() {
-		fmt.Printf("[%d]:\t 0x%x\n", i, val)
-	}
+	fmt.Println("Register 3 on core 1:")
+	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state1.Reg()[3], state1.Reg()[3])
 	fmt.Println()
-	fmt.Printf("pc: 0x%x\n", state.Pc())
+
+	fmt.Println()
+	fmt.Println("Register 3 on core 2:")
+	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state2.Reg()[3], state2.Reg()[3])
+	fmt.Println()
+
+	fmt.Println()
+	fmt.Println("Register 3 on core 3:")
+	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state3.Reg()[3], state3.Reg()[3])
+	fmt.Println()
+
+	fmt.Println()
+	fmt.Println("Register 3 on core 4:")
+	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state4.Reg()[3], state4.Reg()[3])
+	fmt.Println()
 }
