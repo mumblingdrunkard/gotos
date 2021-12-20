@@ -33,57 +33,57 @@ func (state *State) Pc() uint32 {
 	return state.pc
 }
 
-func (core *Core) fetch() uint32 {
-	core.pc += 4
+func (c *Core) fetch() uint32 {
+	c.pc += 4
 	return 0
 }
 
-func (core *Core) execute(inst uint32) {
+func (c *Core) execute(inst uint32) {
 	// Register 0 is hardwired with all 0s
-	core.reg[0] = 0
-	core.reg[3]++ // counts instructions executed
+	c.reg[0] = 0
+	c.reg[3]++ // counts instructions executed
 }
 
-func (core *Core) run() {
+func (c *Core) run() {
 	// Start running core in loop
-	if !core.state.CompareAndSwap(HALTED, RUNNING) {
+	if !c.state.CompareAndSwap(HALTED, RUNNING) {
 		panic("Attempted to call run() on a core that was not in the HALTED state")
 	}
 
 	for {
 		// Test that state is HALTING, swap to HALTED if so, then break
-        // CompareAndSwap makes this very slow so we use Load instead
-		if core.state.Load() == HALTING {
-            core.state.Store(HALTED)
+		// CompareAndSwap makes this very slow so we use Load instead
+		if c.state.Load() == HALTING {
+			c.state.Store(HALTED)
 			break
 		}
 
-		inst := core.fetch()
-		core.execute(inst)
+		inst := c.fetch()
+		c.execute(inst)
 	}
 }
 
-func (core *Core) StartAndWait() {
-	go core.run()
+func (c *Core) StartAndWait() {
+	go c.run()
 
 	// Spin wait for core to go out of halted state
 	// This ensures the core has actually started when the function returns
 	for {
-		if core.state.Load() == RUNNING {
+		if c.state.Load() == RUNNING {
 			break
 		}
 	}
 }
 
-func (core *Core) StartAndSync(wg *sync.WaitGroup) {
-	go core.run()
+func (c *Core) StartAndSync(wg *sync.WaitGroup) {
+	go c.run()
 
 	// Spin wait for core to go out of halted state
 	// This ensures the core has actually started when the function returns
 	wg.Add(1)
 	go func() {
 		for {
-			if core.state.Load() == RUNNING {
+			if c.state.Load() == RUNNING {
 				break
 			}
 		}
@@ -91,34 +91,34 @@ func (core *Core) StartAndSync(wg *sync.WaitGroup) {
 	}()
 }
 
-// UnsafeX methods are not safe to call while the core is running
-func (core *Core) UnsafeGetState() State {
+// Gets state of processor
+func (c *Core) UnsafeGetState() State {
 	return State{
-		reg: core.reg,
-		pc:  core.pc,
+		reg: c.reg,
+		pc:  c.pc,
 	}
 }
 
-func (core *Core) UnsafeReset() {
+func (c *Core) UnsafeReset() {
 	// Reset registers
-	for i := range core.reg {
-		core.reg[i] = 0
+	for i := range c.reg {
+		c.reg[i] = 0
 	}
 
 	// TODO: Initialize reg[2] with memory size
 
-	core.pc = 0
-	core.state.Store(HALTED)
+	c.pc = 0
+	c.state.Store(HALTED)
 }
 
-func (core *Core) HaltAndWait() {
-	if !core.state.CompareAndSwap(RUNNING, HALTING) {
+func (c *Core) HaltAndWait() {
+	if !c.state.CompareAndSwap(RUNNING, HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
 	// Spin wait for core to go into halted state
 	for {
-		if core.state.Load() == HALTED {
+		if c.state.Load() == HALTED {
 			break
 		}
 	}
@@ -126,15 +126,15 @@ func (core *Core) HaltAndWait() {
 	fmt.Println("Successfully halted core!")
 }
 
-func (core *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if core.state.CompareAndSwap(RUNNING, HALTING) {
+func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
+	if c.state.CompareAndSwap(RUNNING, HALTING) {
 	}
 
 	// Spin wait for core to go into halted state
 	wg.Add(1)
 	go func() {
 		for {
-			if core.state.Load() == HALTED {
+			if c.state.Load() == HALTED {
 				break
 			}
 		}
@@ -142,10 +142,10 @@ func (core *Core) HaltAndSync(wg *sync.WaitGroup) {
 	}()
 }
 
-func NewCore() (core Core) {
-	core = Core{}
+func NewCore() (c Core) {
+	c = Core{}
 
-	core.UnsafeReset()
+	c.UnsafeReset()
 
 	return
 }
