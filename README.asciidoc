@@ -48,9 +48,6 @@ from https://riscv.org/technical/specifications/
 .Authors
 - mumblingdrunkard
 
-.Project supervisors
-- Hein Meling
-
 == License
 
 This project is licensed under the traditional MIT license.
