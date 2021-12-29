@@ -1,0 +1,64 @@
+= Golang Teaching OS - gotos (wip)
+
+A framework to teach the concepts of Operating Systems. Build your very own
+operating system around emulated hardware. Arguably, the most important thing
+that can come out of this project, is the system specification.
+
+If an implementation follows the system specification, processes running ON the
+emulated, virtualized hardware should run flawlessly, albeit with better or
+worse performance depending on the implementation.
+
+This project is built around emulating a RISC-V CPU and some generic hardware
+for I/O. The CPU runs exclusively in User/Application Mode see
+_The RISC-V Instruction Set Manual: Volume II: Privileged Spec_ <<rv5vol2>>
+from https://riscv.org/technical/specifications/
+
+== Roadmap
+
+=== Emulation
+
+==== riscv32g target
+
+- [ ] RV32I base instructions (40)
+- [ ] RV32M extension (8)
+- [ ] RV32A extension (11)
+- [ ] RV32F extension (26)
+- [ ] RV32D extension (26)
+- [ ] Zicsr extension (6)
+- [ ] Zifencei extension (1)
+
+==== Peripherals
+
+- [ ] MMIO
+
+=== OS
+
+- [ ] Syscalls
+- [ ] Synchronization primitives
+- [ ] C standard library
+- [ ] Scheduler framework
+- [ ] MMU framework
+
+=== Applications
+
+- [ ] Shell
+
+== Authors and acknowledgment
+
+.Authors
+- mumblingdrunkard
+
+.Project supervisors
+- Hein Meling
+
+== License
+
+This project is licensed under the traditional MIT license.
+
+[bibliography]
+== Bibliography
+
+- [[[rv5vol1]]] Andrew Waterman, Krste Asanović, John Hauser.
+_RISC-V ISA Specification: Volume 1, Unprivileged ISA v. 20191213_
+- [[[rv5vol2]]] Andrew Waterman, Krste Asanović, John Hauser.
+_RISC-V ISA Specification: Volume 2, Privileged Spec v. 20211203_
