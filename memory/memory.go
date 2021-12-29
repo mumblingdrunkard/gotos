@@ -7,7 +7,7 @@ import (
 
 const (
 	// 128 MiB of memory ought to be enough
-	MEMORY_SIZE = 1024 * 1024 * 128
+	MEMORY_SIZE = 1024 * 1024 * 64
 )
 
 type Endian uint8
@@ -71,7 +71,7 @@ func (m *Memory) StoreHalfWord(address int, hw uint16) error {
 		return fmt.Errorf("Address out of range!")
 	}
 
-	var bytes []uint8
+	bytes := make([]uint8, 2)
 
 	if m.endian == BIG {
 		binary.BigEndian.PutUint16(bytes, hw)
@@ -91,7 +91,7 @@ func (m *Memory) StoreWord(address int, w uint32) error {
 		return fmt.Errorf("Address out of range!")
 	}
 
-	var bytes []uint8
+	bytes := make([]uint8, 4)
 
 	if m.endian == BIG {
 		binary.BigEndian.PutUint32(bytes, w)
@@ -107,16 +107,16 @@ func (m *Memory) StoreWord(address int, w uint32) error {
 }
 
 // Write len(data) number of bytes into m.data from offset and out
-func (m *Memory) Write(data []uint8, address int) error {
+func (m *Memory) Write(data []uint8, address int) (error, int) {
 	if address > len(m.data)-len(data) {
-		return fmt.Errorf("Address out of range!")
+		return fmt.Errorf("Address out of range!"), 0
 	}
 
 	for i, b := range data {
 		m.data[address+i] = b
 	}
 
-	return nil
+	return nil, len(data)
 }
 
 // Read n number of bytes from address and out
@@ -131,6 +131,10 @@ func (m *Memory) Read(address, n int) (error, []uint8) {
 	}
 
 	return nil, bytes
+}
+
+func (m *Memory) Size() uint32 {
+	return uint32(len(m.data))
 }
 
 func NewMemory(endianness Endian) Memory {
