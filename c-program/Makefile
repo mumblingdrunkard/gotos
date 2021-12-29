@@ -6,7 +6,7 @@ minimal.text: minimal
 	${OBJCOPY} -O binary minimal minimal.text
 
 minimal: obj/_start.o obj/main.o obj/exit.o
-	${CC} obj/_start.o obj/main.o obj/exit.o -o minimal -Wl,-Ttext=0x80000000
+	${CC} obj/_start.o obj/main.o obj/exit.o -o minimal -Wl,-Ttext=0x00000000
 
 obj/main.o: obj src/main.c
 	${CC} -c src/main.c -o obj/main.o
