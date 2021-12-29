@@ -19,13 +19,13 @@ from https://riscv.org/technical/specifications/
 
 ==== riscv32g target
 
-- [ ] RV32I base instructions (40)
-- [ ] RV32M extension (8)
-- [ ] RV32A extension (11)
-- [ ] RV32F extension (26)
-- [ ] RV32D extension (26)
-- [ ] Zicsr extension (6)
-- [ ] Zifencei extension (1)
+- [ ] RV32I base instructions (37/40)
+- [ ] RV32M extension (0/8)
+- [ ] RV32A extension (0/11)
+- [ ] RV32F extension (0/26)
+- [ ] RV32D extension (0/26)
+- [ ] Zicsr extension (0/6)
+- [ ] Zifencei extension (0/1)
 
 ==== Peripherals
 
