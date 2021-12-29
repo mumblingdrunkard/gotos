@@ -1,62 +1,50 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"gotos/cpu"
+	"gotos/memory"
+	"os"
 	"sync"
-	"time"
 )
 
 func main() {
-	core1 := cpu.NewCore()
-	core2 := cpu.NewCore()
-	core3 := cpu.NewCore()
-	core4 := cpu.NewCore()
+	f, err := os.Open("c-program/minimal.text")
+	if err != nil {
+		panic(err)
+	}
+	stats, err := f.Stat()
+	size := stats.Size()
+	program := make([]uint8, size)
+	binary.Read(f, binary.BigEndian, &program)
+	f.Close()
 
-	fmt.Println("Starting core...")
+	mem := memory.NewMemory(memory.LITTLE) // little endian memory
+	err, l := mem.Write(program, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Wrote %d bytes\n", l)
+
+	core1 := cpu.NewCoreWithMemory(&mem)
 
 	var wg sync.WaitGroup
 
 	core1.StartAndSync(&wg)
-	core2.StartAndSync(&wg)
-	core3.StartAndSync(&wg)
-	core4.StartAndSync(&wg)
 
-	fmt.Println("Running...")
+	wg.Wait()
 
-	time.Sleep(1000 * time.Millisecond)
+	core1.SyncOnHalt(&wg)
 
-	fmt.Println("Waiting for core to finish...")
-
-	core1.HaltAndSync(&wg)
-	core2.HaltAndSync(&wg)
-	core3.HaltAndSync(&wg)
-	core4.HaltAndSync(&wg)
-
-	fmt.Println("Done!")
+	wg.Wait()
 
 	state1 := core1.UnsafeGetState()
-	state2 := core2.UnsafeGetState()
-	state3 := core3.UnsafeGetState()
-	state4 := core4.UnsafeGetState()
 
-	fmt.Println()
-	fmt.Println("Register 3 on core 1:")
-	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state1.Reg()[3], state1.Reg()[3])
-	fmt.Println()
-
-	fmt.Println()
-	fmt.Println("Register 3 on core 2:")
-	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state2.Reg()[3], state2.Reg()[3])
-	fmt.Println()
-
-	fmt.Println()
-	fmt.Println("Register 3 on core 3:")
-	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state3.Reg()[3], state3.Reg()[3])
-	fmt.Println()
-
-	fmt.Println()
-	fmt.Println("Register 3 on core 4:")
-	fmt.Printf("[%d]:\t %x₁₆ = %d₁₀\n", 3, state4.Reg()[3], state4.Reg()[3])
-	fmt.Println()
+	fmt.Println("Register dump:")
+	fmt.Printf("pc: %x\n", state1.Pc())
+	for i, r := range state1.Reg() {
+		fmt.Printf("[%d]: %x\n", i, r)
+	}
 }
