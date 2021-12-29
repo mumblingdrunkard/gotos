@@ -39,6 +39,10 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 - [ ] Shell
 
+== Current state
+
+RV32I is almost fully implemented, allowing you to run a small program using physical addressing.
+
 == Authors and acknowledgment
 
 .Authors
