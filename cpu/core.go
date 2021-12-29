@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+	"gotos/memory"
 	"sync"
 	"sync/atomic"
 )
@@ -17,6 +18,9 @@ type Core struct {
 	state atomic.Value
 	reg   [32]uint32
 	pc    uint32
+	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference
+	// to it instead
+	mem *memory.Memory
 }
 
 type State struct {
@@ -39,15 +43,17 @@ func (c *Core) fetch() uint32 {
 }
 
 func (c *Core) execute(inst uint32) {
-	// Register 0 is hardwired with all 0s
+	// Register 0 is hardwired with all 0s have to reset to 0 for every
+	// cycle because some instructions may use this as their /dev/null
 	c.reg[0] = 0
-	c.reg[3]++ // counts instructions executed
+
+	// TODO: decode and run instructions
 }
 
 func (c *Core) run() {
 	// Start running core in loop
 	if !c.state.CompareAndSwap(HALTED, RUNNING) {
-		panic("Attempted to call run() on a core that was not in the HALTED state")
+		panic("Attempted to call `run()` on a core that was not in the HALTED state")
 	}
 
 	for {
@@ -127,7 +133,8 @@ func (c *Core) HaltAndWait() {
 }
 
 func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if c.state.CompareAndSwap(RUNNING, HALTING) {
+	if !c.state.CompareAndSwap(RUNNING, HALTING) {
+		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
 	// Spin wait for core to go into halted state
