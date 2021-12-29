@@ -198,7 +198,7 @@ func (c *Core) jal(inst uint32) {
 	// What the fuck is this format?
 	imm19_12 := (inst >> 12) & 0xff
 	imm11 := (inst >> 20) & 1
-	imm10_1 := (inst >> 20) & 0x3ff
+	imm10_1 := (inst >> 21) & 0x3ff
 	imm20 := uint32(int32(inst) >> 31) // for sign extension
 	// Why couldn't this just be imm[20:1] ?
 	// I think this is how it's supposed to work?
@@ -210,9 +210,11 @@ func (c *Core) jal(inst uint32) {
 // jump and link register
 func (c *Core) jalr(inst uint32) {
 	rd := (inst >> 7) & 0x1f
+	rs1 := (inst >> 15) & 0x1f
+	rs1_val := c.reg[rs1]
 	imm11_0 := uint32(int32(inst) >> 20)
 	c.reg[rd] = c.pc + 4
-	c.pc = (c.pc + imm11_0) & 0xfffffffe
+	c.pc = (rs1_val + imm11_0) & 0xfffffffe
 }
 
 // branch equal
@@ -220,12 +222,14 @@ func (c *Core) beq(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] == c.reg[rs2] {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -234,12 +238,14 @@ func (c *Core) bne(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] != c.reg[rs2] {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -248,12 +254,14 @@ func (c *Core) blt(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) < int32(c.reg[rs2]) {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -262,12 +270,14 @@ func (c *Core) bltu(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] < c.reg[rs2] {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -276,12 +286,14 @@ func (c *Core) bge(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) >= int32(c.reg[rs2]) {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -290,12 +302,14 @@ func (c *Core) bgeu(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 6) & 1
+	imm11 := (inst >> 7) & 1
 	imm10_5 := (inst >> 25) & 0x1f
-	imm12 := (int32(inst) >> 31) & 1 // sign extended
+	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] >= c.reg[rs2] {
 		c.pc += offset
+	} else {
+		c.pc += 4
 	}
 }
 
@@ -357,7 +371,6 @@ func (c *Core) lw(inst uint32) {
 
 // load byte unsigned
 func (c *Core) lbu(inst uint32) {
-	// TODO
 	rd := (inst >> 7) & 0x1f             // dest
 	rs1 := (inst >> 15) & 0x1f           // base
 	imm11_0 := uint32(int32(inst) >> 20) // offset
@@ -444,14 +457,16 @@ func (c *Core) sw(inst uint32) {
 // fence
 func (c *Core) fence(inst uint32) {
 	// TODO
+	// no-op for now
 }
 
 // environment call
 func (c *Core) ecall(inst uint32) {
-	// TODO
+	// TODO just halts for now
+	c.state.Store(HALTING)
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
-	// TODO
+	// TODO no-op for now
 }

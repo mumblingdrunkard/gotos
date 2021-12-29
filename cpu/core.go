@@ -38,16 +38,13 @@ func (state *State) Pc() uint32 {
 }
 
 func (c *Core) fetch() uint32 {
-	c.pc += 4
-	return 0
-}
+	err, inst := c.mem.LoadWord(int(c.pc))
 
-func (c *Core) execute(inst uint32) {
-	// Register 0 is hardwired with all 0s have to reset to 0 for every
-	// cycle because some instructions may use this as their /dev/null
-	c.reg[0] = 0
+	if err != nil {
+		panic(err)
+	}
 
-	// TODO: decode and run instructions
+	return inst
 }
 
 func (c *Core) run() {
@@ -66,6 +63,10 @@ func (c *Core) run() {
 
 		inst := c.fetch()
 		c.execute(inst)
+		opcode := inst & 0x7f
+		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
+			c.pc += 4
+		}
 	}
 }
 
@@ -112,6 +113,7 @@ func (c *Core) UnsafeReset() {
 	}
 
 	// TODO: Initialize reg[2] with memory size
+	c.reg[2] = c.mem.Size()
 
 	c.pc = 0
 	c.state.Store(HALTED)
@@ -149,8 +151,39 @@ func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
 	}()
 }
 
+func (c *Core) SyncOnHalt(wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		for {
+			if c.state.Load() == HALTED {
+				break
+			}
+		}
+		wg.Done()
+	}()
+}
+
 func NewCore() (c Core) {
 	c = Core{}
+
+	c.UnsafeReset()
+
+	return
+}
+
+func (c *Core) Step() {
+	inst := c.fetch()
+	c.execute(inst)
+	opcode := inst & 0x7f
+	if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
+		c.pc += 4
+	}
+}
+
+func NewCoreWithMemory(m *memory.Memory) (c Core) {
+	c = Core{
+		mem: m,
+	}
 
 	c.UnsafeReset()
 
