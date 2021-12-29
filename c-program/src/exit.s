@@ -3,5 +3,5 @@
 .type sys_ext, @function
 
 sys_exit:
-	li    a7, 1
+	li    a7, 1 // syscall number
 	ecall
