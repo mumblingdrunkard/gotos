@@ -132,3 +132,9 @@ func (m *Memory) Read(address, n int) (error, []uint8) {
 
 	return nil, bytes
 }
+
+func NewMemory(endianness Endian) Memory {
+	return Memory{
+		endian: endianness,
+	}
+}
