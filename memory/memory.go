@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	// 128 MiB of memory ought to be enough
-	MEMORY_SIZE = 1024 * 1024 * 64
+	// 1 MiB of memory ought to be enough
+	MEMORY_SIZE = 256
 )
 
 type Endian uint8
@@ -25,7 +25,7 @@ type Memory struct {
 // Return the byte stored at
 func (m *Memory) LoadByte(address int) (error, uint8) {
 	if address > len(m.data)-1 {
-		return fmt.Errorf("Address out of range!"), 0
+		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
 	return nil, m.data[address]
@@ -33,7 +33,7 @@ func (m *Memory) LoadByte(address int) (error, uint8) {
 
 func (m *Memory) LoadHalfWord(address int) (error, uint16) {
 	if address > len(m.data)-2 {
-		return fmt.Errorf("Address out of range!"), 0
+		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
 	if m.endian == BIG {
@@ -45,7 +45,7 @@ func (m *Memory) LoadHalfWord(address int) (error, uint16) {
 
 func (m *Memory) LoadWord(address int) (error, uint32) {
 	if address > len(m.data)-4 {
-		return fmt.Errorf("Address out of range!"), 0
+		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
 	if m.endian == BIG {
@@ -58,7 +58,7 @@ func (m *Memory) LoadWord(address int) (error, uint32) {
 // Return the byte stored at
 func (m *Memory) StoreByte(address int, b uint8) error {
 	if address > len(m.data)-1 {
-		return fmt.Errorf("Address out of range!")
+		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
 	m.data[address] = b
@@ -68,7 +68,7 @@ func (m *Memory) StoreByte(address int, b uint8) error {
 
 func (m *Memory) StoreHalfWord(address int, hw uint16) error {
 	if address > len(m.data)-2 {
-		return fmt.Errorf("Address out of range!")
+		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
 	bytes := make([]uint8, 2)
@@ -88,7 +88,7 @@ func (m *Memory) StoreHalfWord(address int, hw uint16) error {
 
 func (m *Memory) StoreWord(address int, w uint32) error {
 	if address > len(m.data)-4 {
-		return fmt.Errorf("Address out of range!")
+		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
 	bytes := make([]uint8, 4)
@@ -135,6 +135,13 @@ func (m *Memory) Read(address, n int) (error, []uint8) {
 
 func (m *Memory) Size() uint32 {
 	return uint32(len(m.data))
+}
+
+func (m *Memory) Dump() {
+	fmt.Println("Memory dump:")
+	for i, v := range m.data {
+		fmt.Printf("[%04X] : %02X \n", i, v)
+	}
 }
 
 func NewMemory(endianness Endian) Memory {
