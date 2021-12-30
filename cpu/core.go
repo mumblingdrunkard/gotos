@@ -16,31 +16,14 @@ const (
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
-	state  atomic.Value
-	cycles uint64
-	reg    [32]uint32
-	pc     uint32
+	state  atomic.Value // core state (HALTED, HALTING, RUNNING)
+	cycles uint64       // number of cycles executed
+	inst   uint32       // currently executing instruction
+	reg    [32]uint32   // registers
+	pc     uint32       // program counter
 	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference
 	// to it instead
 	mem *memory.Memory
-}
-
-type State struct {
-	cycles uint64
-	reg    [32]uint32
-	pc     uint32
-}
-
-func (state *State) Reg() [32]uint32 {
-	return state.reg
-}
-
-func (state *State) Pc() uint32 {
-	return state.pc
-}
-
-func (state *State) Cycles() uint64 {
-	return state.cycles
 }
 
 func (c *Core) fetch() uint32 {
@@ -61,7 +44,6 @@ func (c *Core) run(wg *sync.WaitGroup) {
 
 	wg.Done() // core has switched to running state
 
-	c.Add(1) // core is running
 	for {
 		// Test if state is HALTING, swap to HALTED if so, then break
 		// CompareAndSwap makes this very slow so we use Load instead
@@ -72,12 +54,14 @@ func (c *Core) run(wg *sync.WaitGroup) {
 
 		c.cycles += 1
 		inst := c.fetch()
+		c.inst = inst
 		c.execute(inst)
 		opcode := inst & 0x7f
-		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) && (opcode != SYSTEM) {
+		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
 			c.pc += 4
 		}
 	}
+
 	c.Done() // core is done
 }
 
@@ -86,6 +70,7 @@ func (c *Core) run(wg *sync.WaitGroup) {
 func (c *Core) StartAndWait() {
 	var wg sync.WaitGroup
 	wg.Add(1)
+	c.Add(1) // caller can't accidentally wait on core that hasn't entered loop
 	go c.run(&wg)
 	wg.Wait()
 }
@@ -94,16 +79,8 @@ func (c *Core) StartAndWait() {
 // It is an error to call Start on a core that is already started
 func (c *Core) StartAndSync(wg *sync.WaitGroup) {
 	wg.Add(1)
+	c.Add(1) // caller can't accidentally wait on core
 	go c.run(wg)
-}
-
-// Gets state of processor
-func (c *Core) UnsafeGetState() State {
-	return State{
-		cycles: c.cycles,
-		reg:    c.reg,
-		pc:     c.pc,
-	}
 }
 
 func (c *Core) UnsafeReset() {
@@ -125,13 +102,15 @@ func (c *Core) UnsafeReset() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndWait() {
+	if c.state.Load() == HALTED {
+		return
+	}
+
 	if !c.state.CompareAndSwap(RUNNING, HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
 	c.Wait() // Wait for core to halt
-
-	fmt.Println("Successfully halted core!")
 }
 
 // Halts the core, but leaves it to the caller to sync
@@ -188,4 +167,12 @@ func NewCoreWithMemory(m *memory.Memory) (c Core) {
 	c.UnsafeReset()
 
 	return
+}
+
+func (c *Core) DumpRegisters() {
+	fmt.Println("Register dump")
+	fmt.Printf("pc: %X\n", c.pc)
+	for i, r := range c.reg {
+		fmt.Printf("[%02d]: %08X\n", i, r)
+	}
 }
