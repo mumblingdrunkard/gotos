@@ -327,11 +327,7 @@ func (c *Core) lb(inst uint32) {
 	err, b := c.mem.LoadByte(int(address))
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 
@@ -351,11 +347,7 @@ func (c *Core) lh(inst uint32) {
 	err, hw := c.mem.LoadHalfWord(int(address))
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 
@@ -375,11 +367,7 @@ func (c *Core) lw(inst uint32) {
 	err, w := c.mem.LoadWord(int(address))
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 
@@ -396,11 +384,7 @@ func (c *Core) lbu(inst uint32) {
 	err, b := c.mem.LoadByte(int(address))
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 
@@ -417,11 +401,7 @@ func (c *Core) lhu(inst uint32) {
 	err, hw := c.mem.LoadHalfWord(int(address))
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 
@@ -442,11 +422,7 @@ func (c *Core) sb(inst uint32) {
 	err := c.mem.StoreByte(int(address), b)
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 }
@@ -465,11 +441,7 @@ func (c *Core) sh(inst uint32) {
 	err := c.mem.StoreHalfWord(int(address), hw)
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 }
@@ -487,11 +459,7 @@ func (c *Core) sw(inst uint32) {
 	err := c.mem.StoreWord(int(address), c.reg[rs2])
 
 	if err != nil {
-		fmt.Println("Register dump")
-		fmt.Printf("pc: %x\n", c.pc)
-		for i, r := range c.reg {
-			fmt.Printf("[%d]: %x\n", i, r)
-		}
+		c.DumpRegisters()
 		panic(err)
 	}
 }
@@ -505,11 +473,13 @@ func (c *Core) fence(inst uint32) {
 // environment call
 func (c *Core) ecall(inst uint32) {
 	// TODO just halts for now
-	// c.state.Store(HALTING)
-	c.UnsafeReset()
+	fmt.Println("ECALL")
+	c.state.Store(HALTING)
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
 	// TODO no-op for now
+	fmt.Println("EBREAK")
+	c.state.Store(HALTING)
 }
