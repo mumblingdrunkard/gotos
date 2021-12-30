@@ -6,7 +6,6 @@ import (
 	"gotos/cpu"
 	"gotos/memory"
 	"os"
-	"sync"
 )
 
 func main() {
@@ -30,21 +29,15 @@ func main() {
 
 	core1 := cpu.NewCoreWithMemory(&mem)
 
-	var wg sync.WaitGroup
+	core1.DumpRegisters()
 
-	core1.StartAndSync(&wg)
+	core1.StartAndWait()
+	core1.Wait() // waits for first EBREAK
+	core1.DumpRegisters()
 
-	wg.Wait()
+	core1.StartAndWait()
+	core1.Wait()
+	core1.DumpRegisters()
 
-	core1.SyncOnHalt(&wg)
-
-	wg.Wait()
-
-	state1 := core1.UnsafeGetState()
-
-	fmt.Println("Register dump:")
-	fmt.Printf("pc: %x\n", state1.Pc())
-	for i, r := range state1.Reg() {
-		fmt.Printf("[%d]: %x\n", i, r)
-	}
+	mem.Dump()
 }
