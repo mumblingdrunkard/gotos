@@ -15,26 +15,32 @@ const (
 
 // A RISC-V core that runs in user mode
 type Core struct {
-	state atomic.Value
-	reg   [32]uint32
-	pc    uint32
+	sync.WaitGroup
+	state  atomic.Value
+	cycles uint64
+	reg    [32]uint32
+	pc     uint32
 	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference
 	// to it instead
 	mem *memory.Memory
 }
 
 type State struct {
-	reg [32]uint32
-	pc  uint32
+	cycles uint64
+	reg    [32]uint32
+	pc     uint32
 }
 
 func (state *State) Reg() [32]uint32 {
-	// TODO: stuff
 	return state.reg
 }
 
 func (state *State) Pc() uint32 {
 	return state.pc
+}
+
+func (state *State) Cycles() uint64 {
+	return state.cycles
 }
 
 func (c *Core) fetch() uint32 {
@@ -47,62 +53,56 @@ func (c *Core) fetch() uint32 {
 	return inst
 }
 
-func (c *Core) run() {
+func (c *Core) run(wg *sync.WaitGroup) {
 	// Start running core in loop
 	if !c.state.CompareAndSwap(HALTED, RUNNING) {
 		panic("Attempted to call `run()` on a core that was not in the HALTED state")
 	}
 
+	wg.Done() // core has switched to running state
+
+	c.Add(1) // core is running
 	for {
-		// Test that state is HALTING, swap to HALTED if so, then break
+		// Test if state is HALTING, swap to HALTED if so, then break
 		// CompareAndSwap makes this very slow so we use Load instead
 		if c.state.Load() == HALTING {
 			c.state.Store(HALTED)
 			break
 		}
 
+		c.cycles += 1
 		inst := c.fetch()
 		c.execute(inst)
 		opcode := inst & 0x7f
-		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
+		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) && (opcode != SYSTEM) {
 			c.pc += 4
 		}
 	}
+	c.Done() // core is done
 }
 
+// makes sure the core has at least entered the running state before returning
+// It is an error to call Start on a core that is already started
 func (c *Core) StartAndWait() {
-	go c.run()
-
-	// Spin wait for core to go out of halted state
-	// This ensures the core has actually started when the function returns
-	for {
-		if c.state.Load() == RUNNING {
-			break
-		}
-	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go c.run(&wg)
+	wg.Wait()
 }
 
+// Leaves it up to the caller when to sync
+// It is an error to call Start on a core that is already started
 func (c *Core) StartAndSync(wg *sync.WaitGroup) {
-	go c.run()
-
-	// Spin wait for core to go out of halted state
-	// This ensures the core has actually started when the function returns
 	wg.Add(1)
-	go func() {
-		for {
-			if c.state.Load() == RUNNING {
-				break
-			}
-		}
-		wg.Done()
-	}()
+	go c.run(wg)
 }
 
 // Gets state of processor
 func (c *Core) UnsafeGetState() State {
 	return State{
-		reg: c.reg,
-		pc:  c.pc,
+		cycles: c.cycles,
+		reg:    c.reg,
+		pc:     c.pc,
 	}
 }
 
@@ -116,49 +116,46 @@ func (c *Core) UnsafeReset() {
 	c.reg[2] = c.mem.Size()
 
 	c.pc = 0
-	c.state.Store(HALTED)
+	// c.state.Store(HALTED)
 }
 
+// Halts the core and waits for it to halt before returning
+// TODO: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
+// Possible fix, check for halted state first, if so, return immediately
+// con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
+//   This is an acceptable solution.
 func (c *Core) HaltAndWait() {
 	if !c.state.CompareAndSwap(RUNNING, HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
-	// Spin wait for core to go into halted state
-	for {
-		if c.state.Load() == HALTED {
-			break
-		}
-	}
+	c.Wait() // Wait for core to halt
 
 	fmt.Println("Successfully halted core!")
 }
 
+// Halts the core, but leaves it to the caller to sync
+// TODO: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
+// Possible fix, check for halted state first, if so, return immediately
+// con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
+//   This is an acceptable solution.
 func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
 	if !c.state.CompareAndSwap(RUNNING, HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
-	// Spin wait for core to go into halted state
 	wg.Add(1)
 	go func() {
-		for {
-			if c.state.Load() == HALTED {
-				break
-			}
-		}
+		c.Wait()
 		wg.Done()
 	}()
 }
 
+// Not really needed anymore, use core.Wait() instead
 func (c *Core) SyncOnHalt(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
-		for {
-			if c.state.Load() == HALTED {
-				break
-			}
-		}
+		c.Wait()
 		wg.Done()
 	}()
 }
@@ -182,8 +179,11 @@ func (c *Core) Step() {
 
 func NewCoreWithMemory(m *memory.Memory) (c Core) {
 	c = Core{
-		mem: m,
+		cycles: 0,
+		mem:    m,
 	}
+
+	c.state.Store(HALTED)
 
 	c.UnsafeReset()
 
