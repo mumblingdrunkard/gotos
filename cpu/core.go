@@ -148,6 +148,7 @@ func NewCore() (c Core) {
 }
 
 func (c *Core) Step() {
+	c.cycles += 1
 	inst := c.fetch()
 	c.execute(inst)
 	opcode := inst & 0x7f
@@ -167,6 +168,10 @@ func NewCoreWithMemory(m *memory.Memory) (c Core) {
 	c.UnsafeReset()
 
 	return
+}
+
+func (c *Core) Cycles() uint64 {
+	return c.cycles
 }
 
 func (c *Core) State() interface{} {
