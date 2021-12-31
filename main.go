@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("c-program/minimal.text")
+	f, err := os.Open("fib/fib.text")
 	if err != nil {
 		panic(err)
 	}
@@ -29,15 +29,8 @@ func main() {
 
 	core1 := cpu.NewCoreWithMemory(&mem)
 
-	core1.DumpRegisters()
-
-	core1.StartAndWait()
-	core1.Wait() // waits for first EBREAK
-	core1.DumpRegisters()
-
-	core1.StartAndWait()
-	core1.Wait()
-	core1.DumpRegisters()
-
-	mem.Dump()
+	for core1.State() != cpu.HALTING {
+		core1.DumpRegisters()
+		core1.Step()
+	}
 }
