@@ -30,7 +30,9 @@ func main() {
 	core1 := cpu.NewCoreWithMemory(&mem)
 
 	for core1.State() != cpu.HALTING {
-		core1.DumpRegisters()
+		// core1.DumpRegisters()
 		core1.Step()
 	}
+
+	core1.DumpRegisters()
 }
