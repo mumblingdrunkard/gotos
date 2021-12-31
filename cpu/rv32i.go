@@ -225,7 +225,7 @@ func (c *Core) beq(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
 	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] == c.reg[rs2] {
@@ -241,7 +241,7 @@ func (c *Core) bne(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
 	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] != c.reg[rs2] {
@@ -257,7 +257,7 @@ func (c *Core) blt(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
 	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) < int32(c.reg[rs2]) {
@@ -273,7 +273,7 @@ func (c *Core) bltu(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
 	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] < c.reg[rs2] {
@@ -289,7 +289,7 @@ func (c *Core) bge(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
 	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) >= int32(c.reg[rs2]) {
@@ -304,8 +304,8 @@ func (c *Core) bgeu(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm4_1 := (inst >> 8) & 0xf
-	imm11 := (inst >> 7) & 1
-	imm10_5 := (inst >> 25) & 0x1f
+	imm11 := (inst >> 7) & 0x1
+	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] >= c.reg[rs2] {
