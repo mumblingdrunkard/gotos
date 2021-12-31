@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	// 1 MiB of memory ought to be enough
-	MEMORY_SIZE = 256
+	// 4 MiB of memory ought to be enough
+	MEMORY_SIZE = 1024 * 1024 * 4
 )
 
 type Endian uint8
