@@ -24,6 +24,9 @@ type Core struct {
 	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference
 	// to it instead
 	mem *memory.Memory
+
+	memBase uint32
+	memSize uint32
 }
 
 func (c *Core) fetch() uint32 {
@@ -34,6 +37,28 @@ func (c *Core) fetch() uint32 {
 	}
 
 	return inst
+}
+
+func (c *Core) UnsafeSetMemBase(base uint32) {
+	if base > c.mem.Size() {
+		panic("Tried to set base out of bounds of memory limits")
+	}
+
+	c.memBase = base
+}
+
+func (c *Core) UnsafeSetMemSize(size uint32) {
+	c.memSize = size
+	c.reg[2] = size
+}
+
+// currently just base and bounds
+func (c *Core) translateAddress(address uint32) uint32 {
+	if address >= c.memSize {
+		panic("Address out of bounds")
+	}
+
+	return address + c.memBase
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
@@ -90,7 +115,7 @@ func (c *Core) UnsafeReset() {
 	}
 
 	// TODO: Initialize reg[2] with memory size
-	c.reg[2] = c.mem.Size()
+	c.reg[2] = c.memSize
 
 	c.pc = 0
 	// c.state.Store(HALTED)
@@ -159,8 +184,10 @@ func (c *Core) Step() {
 
 func NewCoreWithMemory(m *memory.Memory) (c Core) {
 	c = Core{
-		cycles: 0,
-		mem:    m,
+		cycles:  0,
+		mem:     m,
+		memBase: 0,
+		memSize: m.Size(),
 	}
 
 	c.state.Store(HALTED)
