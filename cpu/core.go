@@ -30,7 +30,8 @@ type Core struct {
 }
 
 func (c *Core) fetch() uint32 {
-	err, inst := c.mem.LoadWord(int(c.pc))
+	pc := c.translateAddress(c.pc)
+	err, inst := c.mem.LoadWord(int(pc))
 
 	if err != nil {
 		panic(err)
