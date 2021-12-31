@@ -29,10 +29,11 @@ func main() {
 
 	core1 := cpu.NewCoreWithMemory(&mem)
 
-	for core1.State() != cpu.HALTING {
-		// core1.DumpRegisters()
-		core1.Step()
-	}
+	core1.StartAndWait()
+
+	core1.Wait()
+
+	fmt.Printf("%d cycles\n", core1.Cycles())
 
 	core1.DumpRegisters()
 }
