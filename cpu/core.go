@@ -169,6 +169,10 @@ func NewCoreWithMemory(m *memory.Memory) (c Core) {
 	return
 }
 
+func (c *Core) State() interface{} {
+	return c.state.Load()
+}
+
 func (c *Core) DumpRegisters() {
 	fmt.Println("Register dump")
 	fmt.Printf("pc: %X\n", c.pc)
