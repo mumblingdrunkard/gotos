@@ -41,7 +41,10 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 == Current state
 
-RV32I is almost fully implemented, allowing you to run a small program using physical addressing.
+The current version of main.go loads the two example programs `c-program/minimal.text` and `fib/fib.text` into memory.
+The `fib.text` program is loaded at address 0 and `core1` is given address 0 as a base and 2MiB as the memory size.
+The `minimal.text` program is loaded at a 2MiB offset and `core2` is given a base address equal to this offset and a 2MiB memory size.
+Both cores are then started and awaited until halted before both sets of registers are dumped to the terminal.
 
 == Authors and acknowledgment
 
