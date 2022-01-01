@@ -7,7 +7,7 @@ Arguably, the most important thing that can come out of this project is the syst
 If an implementation follows the system specification, processes running ON the emulated, virtualized hardware should run flawlessly, albeit with better or worse performance depending on the implementation.
 
 This project is built around emulating a RISC-V CPU and some generic hardware for I/O.
-The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Set Manual: Volume II: Privileged Spec_ <<rv5vol2>> from https://riscv.org/technical/specifications/ .
+The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Set Manual: Volume II: Privileged Spec_ <<rv5vol2>> from https://riscv.org/technical/specifications/ , handing control over to the surrounding system (written in Go) when elevated/enhanced privileges are needed such as when performing syscalls.
 
 == Roadmap
 
