@@ -44,24 +44,37 @@ func main() {
 
 	fmt.Printf("Wrote %d bytes\n", l)
 
-	// core1 runs the fib program
 	core1 := cpu.NewCoreWithMemory(&mem)
-	core1.UnsafeSetMemSize(1024 * 1024 * 2) // 2MiB for core1
+	core1.UnsafeSetMemSize(1024 * 1024 * 1)
 
-	// core2 runs the minimal program
 	core2 := cpu.NewCoreWithMemory(&mem)
-	core2.UnsafeSetMemBase(1024 * 1024 * 2) // core2 starts at 2MiB
-	core2.UnsafeSetMemSize(1024 * 1024 * 2) // 2MiB for core2
+	core2.UnsafeSetMemSize(1024 * 1024 * 2)
+
+	core3 := cpu.NewCoreWithMemory(&mem)
+	core3.UnsafeSetMemSize(1024 * 1024 * 3)
+
+	core4 := cpu.NewCoreWithMemory(&mem)
+	core4.UnsafeSetMemSize(1024 * 1024 * 4)
 
 	core1.StartAndWait()
 	core2.StartAndWait()
+	core3.StartAndWait()
+	core4.StartAndWait()
 
 	core1.Wait()
 	core2.Wait()
+	core3.Wait()
+	core4.Wait()
 
 	fmt.Printf("core1: %d cycles\n", core1.Cycles())
 	core1.DumpRegisters()
 
 	fmt.Printf("core2: %d cycles\n", core2.Cycles())
 	core2.DumpRegisters()
+
+	fmt.Printf("core3: %d cycles\n", core3.Cycles())
+	core3.DumpRegisters()
+
+	fmt.Printf("core3: %d cycles\n", core3.Cycles())
+	core4.DumpRegisters()
 }
