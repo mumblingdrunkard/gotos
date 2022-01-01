@@ -1,5 +1,10 @@
 package cpu
 
+// TODO: Exceptions
+
+// TODO: Fix decoding for OP
+// TODO: Add decoding for RV32M extension
+
 const (
 	OP_IMM   uint32 = 0b0010011 // done
 	LUI             = 0b0110111 // done
