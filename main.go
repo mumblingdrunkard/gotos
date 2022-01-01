@@ -19,16 +19,6 @@ func main() {
 	binary.Read(f, binary.BigEndian, &fib)
 	f.Close()
 
-	f, err = os.Open("fib/fib.text")
-	if err != nil {
-		panic(err)
-	}
-	stats, err = f.Stat()
-	size = stats.Size()
-	minimal := make([]uint8, size)
-	binary.Read(f, binary.BigEndian, &minimal)
-	f.Close()
-
 	mem := memory.NewMemory(memory.LITTLE) // little endian memory
 	err, l := mem.Write(fib, 0)
 	if err != nil {
@@ -37,13 +27,12 @@ func main() {
 
 	fmt.Printf("Wrote %d bytes\n", l)
 
-	err, l = mem.Write(minimal, 1024*1024*2)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Wrote %d bytes\n", l)
-
+	// All the cores share the same program, but have their stack start at different addresses.
+	// By convention, the stack is placed at the end of the address space.
+	// By giving all the cores different memory sizes, we essentially give them separate stack spaces.
+	// It is possible that the stack for core4 could flow into the stack of core3 without causing an error.
+	// For now, we just assume/hope this doesn't happen.
+	// More advanced memory sharing techniques are required for this.
 	core1 := cpu.NewCoreWithMemory(&mem)
 	core1.UnsafeSetMemSize(1024 * 1024 * 1)
 
