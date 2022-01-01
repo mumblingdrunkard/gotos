@@ -10,4 +10,4 @@ int fib(int n) {
   return fib(n - 1) + fib(n - 2);
 }
 
-int main() { return fib(23); }
+int main() { return fib(33); }

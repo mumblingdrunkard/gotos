@@ -19,7 +19,7 @@ func main() {
 	binary.Read(f, binary.BigEndian, &fib)
 	f.Close()
 
-	f, err = os.Open("c-program/minimal.text")
+	f, err = os.Open("fib/fib.text")
 	if err != nil {
 		panic(err)
 	}
