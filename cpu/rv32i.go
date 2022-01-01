@@ -5,8 +5,6 @@
 
 package cpu
 
-import "fmt"
-
 // add immediate
 func (c *Core) addi(inst uint32) {
 	rd := (inst >> 7) & 0x1f
@@ -483,13 +481,11 @@ func (c *Core) fence(inst uint32) {
 // environment call
 func (c *Core) ecall(inst uint32) {
 	// TODO just halts for now
-	fmt.Println("ECALL")
 	c.state.Store(HALTING)
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
 	// TODO no-op for now
-	fmt.Println("EBREAK")
 	c.state.Store(HALTING)
 }
