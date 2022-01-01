@@ -91,9 +91,7 @@ func (m *Memory) StoreHalfWord(address int, hw uint16) error {
 		binary.LittleEndian.PutUint16(bytes, hw)
 	}
 
-	for i, b := range bytes {
-		m.data[address+i] = b
-	}
+	copy(m.data[address:address+2], bytes)
 
 	return nil
 }
@@ -113,9 +111,7 @@ func (m *Memory) StoreWord(address int, w uint32) error {
 		binary.LittleEndian.PutUint32(bytes, w)
 	}
 
-	for i, b := range bytes {
-		m.data[address+i] = b
-	}
+	copy(m.data[address:address+4], bytes)
 
 	return nil
 }
@@ -128,9 +124,7 @@ func (m *Memory) Write(data []uint8, address int) (error, int) {
 		return fmt.Errorf("Address out of range!"), 0
 	}
 
-	for i, b := range data {
-		m.data[address+i] = b
-	}
+	copy(m.data[address:], data)
 
 	return nil, len(data)
 }
@@ -144,9 +138,7 @@ func (m *Memory) Read(address, n int) (error, []uint8) {
 	}
 
 	bytes := make([]uint8, n)
-	for i := range bytes {
-		bytes[i] = m.data[address+i]
-	}
+	copy(bytes, m.data[address:address+n])
 
 	return nil, bytes
 }
@@ -162,7 +154,7 @@ func (m *Memory) Dump() {
 	defer m.Unlock()
 	fmt.Println("Memory dump:")
 	for i, v := range m.data {
-		fmt.Printf("[%04X] : %02X \n", i, v)
+		fmt.Printf("[%06X] : %02X \n", i, v)
 	}
 }
 
