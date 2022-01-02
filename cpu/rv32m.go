@@ -52,6 +52,11 @@ func (c *Core) div(inst uint32) {
 	a := int32(c.reg[rs1])
 	b := int32(c.reg[rs2])
 
+	if b == 0 {
+		c.reg[rd] = 0xFFFFFFFF
+		return
+	}
+
 	c.reg[rd] = uint32(a / b)
 }
 
@@ -62,6 +67,11 @@ func (c *Core) divu(inst uint32) {
 
 	a := c.reg[rs1]
 	b := c.reg[rs2]
+
+	if b == 0 {
+		c.reg[rd] = 0xFFFFFFFF
+		return
+	}
 
 	c.reg[rd] = a / b
 }
@@ -74,7 +84,12 @@ func (c *Core) rem(inst uint32) {
 	a := int32(c.reg[rs1])
 	b := int32(c.reg[rs2])
 
-	c.reg[rd] = uint32(a - b*(a/b))
+	if b == 0 {
+		c.reg[rd] = uint32(a)
+		return
+	}
+
+	c.reg[rd] = uint32(a % b)
 }
 
 func (c *Core) remu(inst uint32) {
@@ -85,5 +100,10 @@ func (c *Core) remu(inst uint32) {
 	a := c.reg[rs1]
 	b := c.reg[rs2]
 
-	c.reg[rd] = a - b*(a/b)
+	if b == 0 {
+		c.reg[rd] = uint32(a)
+		return
+	}
+
+	c.reg[rd] = a % b
 }

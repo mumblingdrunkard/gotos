@@ -54,23 +54,44 @@ func (c *Core) execute(inst uint32) {
 	}
 }
 
-// OP funct3
+// OP funct7
 const (
-	ADD_SUB uint32 = 0b000
-	SLL            = 0b001
-	SLT            = 0b010
-	SLTU           = 0b011
-	XOR            = 0b100
-	SRL_SRA        = 0b101
-	OR             = 0b110
-	AND            = 0b111
+	OP_A   uint32 = 0b0000000
+	OP_B          = 0b0100000
+	MULDIV        = 0b0000001
 )
 
 func (c *Core) op(inst uint32) {
-	funct3 := (inst >> 12) & 0x3
+	funct7 := (inst >> 25) & 0x7f
+	switch funct7 {
+	case OP_A:
+		c.op_a(inst)
+	case OP_B:
+		c.op_b(inst)
+	case MULDIV:
+		c.muldiv(inst)
+	default:
+		panic("Illegal instruction format")
+	}
+}
+
+// OP_A funct3
+const (
+	ADD  uint32 = 0b000
+	SLL         = 0b001
+	SLT         = 0b010
+	SLTU        = 0b011
+	XOR         = 0b100
+	SRL         = 0b101
+	OR          = 0b110
+	AND         = 0b111
+)
+
+func (c *Core) op_a(inst uint32) {
+	funct3 := (inst >> 12) & 0x7
 	switch funct3 {
-	case ADD_SUB:
-		c.add_sub(inst)
+	case ADD:
+		c.add(inst)
 	case SLL:
 		c.sll(inst)
 	case SLT:
@@ -79,50 +100,66 @@ func (c *Core) op(inst uint32) {
 		c.sltu(inst)
 	case XOR:
 		c.xor(inst)
-	case SRL_SRA:
-		c.srl_sra(inst)
+	case SRL:
+		c.srl(inst)
 	case OR:
 		c.or(inst)
 	case AND:
 		c.and(inst)
 	default:
-		panic("Illegal instruction format")
+		panic("Unknown instruction")
 	}
 }
 
-// ADD/SUB funct7
 const (
-	ADD uint32 = 0b0000000
-	SUB        = 0b0100000
+	SUB uint32 = 0b000
+	SRA        = 0b101
 )
 
-func (c *Core) add_sub(inst uint32) {
-	funct7 := (inst >> 25) & 0x7f
-	switch funct7 {
-	case ADD:
-		c.add(inst)
+func (c *Core) op_b(inst uint32) {
+	funct3 := (inst >> 12) & 0x7
+	switch funct3 {
 	case SUB:
 		c.sub(inst)
-	default:
-		panic("Illegal instruction format")
-	}
-}
-
-// SRL/SRA funct7
-const (
-	SRL uint32 = 0b0000000
-	SRA        = 0b0100000
-)
-
-func (c *Core) srl_sra(inst uint32) {
-	funct7 := (inst >> 25) & 0x7f
-	switch funct7 {
-	case SRL:
-		c.srl(inst)
 	case SRA:
 		c.sra(inst)
 	default:
-		panic("Illegal instruction format")
+		panic("Unknown instruction")
+	}
+}
+
+const (
+	MUL    uint32 = 0b000
+	MULH          = 0b001
+	MULHSU        = 0b010
+	MULHU         = 0b011
+	DIV           = 0b100
+	DIVU          = 0b101
+	REM           = 0b110
+	REMU          = 0b111
+)
+
+func (c *Core) muldiv(inst uint32) {
+	funct3 := (inst >> 12) & 0x7
+	switch funct3 {
+	case MUL:
+		c.mul(inst)
+	case MULH:
+		c.mulh(inst)
+	case MULHSU:
+		c.mulhsu(inst)
+	case MULHU:
+		c.mulhu(inst)
+	case DIV:
+		c.div(inst)
+	case DIVU:
+		c.divu(inst)
+	case REM:
+		c.rem(inst)
+	case REMU:
+		c.rem(inst)
+	default:
+		panic("Unknown instruction")
 	}
 }
 
@@ -139,7 +176,7 @@ const (
 )
 
 func (c *Core) op_imm(inst uint32) {
-	funct3 := (inst >> 12) & 0x3
+	funct3 := (inst >> 12) & 0x7
 	switch funct3 {
 	case ADDI:
 		c.addi(inst)
@@ -202,7 +239,7 @@ const (
 )
 
 func (c *Core) load(inst uint32) {
-	funct3 := (inst >> 12) & 0x3
+	funct3 := (inst >> 12) & 0x7
 	switch funct3 {
 	case LB:
 		c.lb(inst)
@@ -227,7 +264,7 @@ const (
 )
 
 func (c *Core) store(inst uint32) {
-	funct3 := (inst >> 12) & 0x3
+	funct3 := (inst >> 12) & 0x7
 	switch funct3 {
 	case SB:
 		c.sb(inst)
@@ -246,7 +283,7 @@ const (
 )
 
 func (c *Core) misc_mem(inst uint32) {
-	funct3 := (inst >> 12) & 0x3
+	funct3 := (inst >> 12) & 0x7
 	switch funct3 {
 	case FENCE:
 		c.fence(inst)
