@@ -3,7 +3,6 @@ package memory
 import (
 	"encoding/binary"
 	"fmt"
-	"sync"
 )
 
 const (
@@ -19,26 +18,21 @@ const (
 )
 
 type Memory struct {
-	sync.Mutex
 	data   [MEMORY_SIZE]uint8
 	endian Endian
 }
 
 // Return the byte stored at
-func (m *Memory) LoadByte(address int) (error, uint8) {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-1 {
+func (m *Memory) LoadByte(address uint32) (error, uint8) {
+	if address > uint32(len(m.data)-1) {
 		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
 	return nil, m.data[address]
 }
 
-func (m *Memory) LoadHalfWord(address int) (error, uint16) {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-2 {
+func (m *Memory) LoadHalfWord(address uint32) (error, uint16) {
+	if address > uint32(len(m.data)-2) {
 		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
@@ -49,10 +43,8 @@ func (m *Memory) LoadHalfWord(address int) (error, uint16) {
 	}
 }
 
-func (m *Memory) LoadWord(address int) (error, uint32) {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-4 {
+func (m *Memory) LoadWord(address uint32) (error, uint32) {
+	if address > uint32(len(m.data)-4) {
 		return fmt.Errorf("Address `%x` out of range!", address), 0
 	}
 
@@ -64,10 +56,8 @@ func (m *Memory) LoadWord(address int) (error, uint32) {
 }
 
 // Return the byte stored at
-func (m *Memory) StoreByte(address int, b uint8) error {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-1 {
+func (m *Memory) StoreByte(address uint32, b uint8) error {
+	if address > uint32(len(m.data)-1) {
 		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
@@ -76,10 +66,8 @@ func (m *Memory) StoreByte(address int, b uint8) error {
 	return nil
 }
 
-func (m *Memory) StoreHalfWord(address int, hw uint16) error {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-2 {
+func (m *Memory) StoreHalfWord(address uint32, hw uint16) error {
+	if address > uint32(len(m.data)-2) {
 		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
@@ -96,10 +84,8 @@ func (m *Memory) StoreHalfWord(address int, hw uint16) error {
 	return nil
 }
 
-func (m *Memory) StoreWord(address int, w uint32) error {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-4 {
+func (m *Memory) StoreWord(address uint32, w uint32) error {
+	if address > uint32(len(m.data)-4) {
 		return fmt.Errorf("Address `%x` out of range!", address)
 	}
 
@@ -117,10 +103,8 @@ func (m *Memory) StoreWord(address int, w uint32) error {
 }
 
 // Write len(data) number of bytes into m.data from offset and out
-func (m *Memory) Write(data []uint8, address int) (error, int) {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-len(data) {
+func (m *Memory) Write(address uint32, data []uint8) (error, int) {
+	if address > uint32(len(m.data)-len(data)) {
 		return fmt.Errorf("Address out of range!"), 0
 	}
 
@@ -130,10 +114,8 @@ func (m *Memory) Write(data []uint8, address int) (error, int) {
 }
 
 // Read n number of bytes from address and out
-func (m *Memory) Read(address, n int) (error, []uint8) {
-	m.Lock()
-	defer m.Unlock()
-	if address > len(m.data)-n {
+func (m *Memory) Read(address, n uint32) (error, []uint8) {
+	if address > uint32(len(m.data))-n {
 		return fmt.Errorf("Address out of range!"), nil
 	}
 
@@ -144,14 +126,10 @@ func (m *Memory) Read(address, n int) (error, []uint8) {
 }
 
 func (m *Memory) Size() uint32 {
-	m.Lock()
-	defer m.Unlock()
 	return uint32(len(m.data))
 }
 
 func (m *Memory) Dump() {
-	m.Lock()
-	defer m.Unlock()
 	fmt.Println("Memory dump:")
 	for i, v := range m.data {
 		fmt.Printf("[%06X] : %02X \n", i, v)

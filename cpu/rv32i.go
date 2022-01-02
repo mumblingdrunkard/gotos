@@ -324,7 +324,7 @@ func (c *Core) lb(inst uint32) {
 
 	address = c.translateAddress(address)
 
-	err, b := c.mem.LoadByte(int(address))
+	err, b := c.mem.LoadByte(address)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -346,7 +346,7 @@ func (c *Core) lh(inst uint32) {
 
 	address = c.translateAddress(address)
 
-	err, hw := c.mem.LoadHalfWord(int(address))
+	err, hw := c.mem.LoadHalfWord(address)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -367,7 +367,7 @@ func (c *Core) lw(inst uint32) {
 	address := imm11_0 + c.reg[rs1]
 	address = c.translateAddress(address)
 
-	err, w := c.mem.LoadWord(int(address))
+	err, w := c.mem.LoadWord(address)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -385,7 +385,7 @@ func (c *Core) lbu(inst uint32) {
 	address := imm11_0 + c.reg[rs1]
 	address = c.translateAddress(address)
 
-	err, b := c.mem.LoadByte(int(address))
+	err, b := c.mem.LoadByte(address)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -403,7 +403,7 @@ func (c *Core) lhu(inst uint32) {
 	address := imm11_0 + c.reg[rs1]
 	address = c.translateAddress(address)
 
-	err, hw := c.mem.LoadHalfWord(int(address))
+	err, hw := c.mem.LoadHalfWord(address)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -425,7 +425,7 @@ func (c *Core) sb(inst uint32) {
 	address = c.translateAddress(address)
 	b := uint8(c.reg[rs2] & 0xff)
 
-	err := c.mem.StoreByte(int(address), b)
+	err := c.mem.StoreByte(address, b)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -445,7 +445,7 @@ func (c *Core) sh(inst uint32) {
 	address = c.translateAddress(address)
 	hw := uint16(c.reg[rs2] & 0xffff)
 
-	err := c.mem.StoreHalfWord(int(address), hw)
+	err := c.mem.StoreHalfWord(address, hw)
 
 	if err != nil {
 		c.DumpRegisters()
@@ -464,7 +464,7 @@ func (c *Core) sw(inst uint32) {
 	address := offset + c.reg[rs1]
 	address = c.translateAddress(address)
 
-	err := c.mem.StoreWord(int(address), c.reg[rs2])
+	err := c.mem.StoreWord(address, c.reg[rs2])
 
 	if err != nil {
 		c.DumpRegisters()

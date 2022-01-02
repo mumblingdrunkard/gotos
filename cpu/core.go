@@ -21,17 +21,15 @@ type Core struct {
 	inst   uint32       // currently executing instruction
 	reg    [32]uint32   // registers
 	pc     uint32       // program counter
-	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference
-	// to it instead
-	mem *memory.Memory
-
+	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference to it instead
+	mem     *memory.Memory
 	memBase uint32
 	memSize uint32
 }
 
 func (c *Core) fetch() uint32 {
 	pc := c.translateAddress(c.pc)
-	err, inst := c.mem.LoadWord(int(pc))
+	err, inst := c.mem.LoadWord(pc)
 
 	if err != nil {
 		panic(err)
@@ -78,14 +76,7 @@ func (c *Core) run(wg *sync.WaitGroup) {
 			break
 		}
 
-		c.cycles += 1
-		inst := c.fetch()
-		c.inst = inst
-		c.execute(inst)
-		opcode := inst & 0x7f
-		if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
-			c.pc += 4
-		}
+		c.UnsafeStep()
 	}
 
 	c.Done() // core is done
@@ -173,7 +164,9 @@ func NewCore() (c Core) {
 	return
 }
 
-func (c *Core) Step() {
+func (c *Core) UnsafeStep() {
+	// TODO: Check for interrupts
+
 	c.cycles += 1
 	inst := c.fetch()
 	c.execute(inst)
