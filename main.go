@@ -20,7 +20,7 @@ func main() {
 	f.Close()
 
 	mem := memory.NewMemory(memory.LITTLE) // little endian memory
-	err, l := mem.Write(fib, 0)
+	err, l := mem.Write(0, fib)
 	if err != nil {
 		panic(err)
 	}
@@ -64,6 +64,6 @@ func main() {
 	fmt.Printf("core3: %d cycles\n", core3.Cycles())
 	core3.DumpRegisters()
 
-	fmt.Printf("core3: %d cycles\n", core3.Cycles())
+	fmt.Printf("core4: %d cycles\n", core4.Cycles())
 	core4.DumpRegisters()
 }
