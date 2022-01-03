@@ -30,10 +30,12 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 === OS
 
 - [ ] Syscalls
+  - [*] `void _Noreturn sys_exit(int)`
 - [ ] Synchronization primitives
 - [ ] C standard library
-- [ ] Scheduler framework
-- [ ] MMU framework
+- [ ] Scheduler
+- [ ] MMU
+- [ ] Filesystem
 
 === Applications
 
