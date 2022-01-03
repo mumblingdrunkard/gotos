@@ -126,7 +126,7 @@ func (m *Memory) Read(address, n uint32) (error, []uint8) {
 }
 
 func (m *Memory) Size() uint32 {
-	return uint32(len(m.data))
+	return MEMORY_SIZE
 }
 
 func (m *Memory) Dump() {
