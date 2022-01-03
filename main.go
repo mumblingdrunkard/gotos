@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("fib/fib.text")
+	f, err := os.Open("c-programs/fib/fib.text")
 	if err != nil {
 		panic(err)
 	}

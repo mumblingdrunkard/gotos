@@ -1,4 +1,4 @@
-CC = clang -nostdlib --target=riscv32 -march=rv32i -Oz
+CC = clang -nostdlib --target=riscv32 -march=rv32im -Oz
 OBJCOPY = llvm-objcopy
 
 
