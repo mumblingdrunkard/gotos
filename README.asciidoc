@@ -56,13 +56,22 @@ The four cores then run in parallel until halting.
 Memory without locking is significantly faster than memory with locking.
 This is a problem because in theory, multiple cores may access the same part of memory.
 
-.Perhaps use some sort of frames?
+Perhaps use some sort of frames?
 Have one large array for memory, divide this into frames, then have one RWMutex for each frame.
 Could try this out, though I believe caching is the way to go here.
 Caching means each core has their own copy of non-atomic data such as instructions and stack.
 This encompasses most of the memory accesses that a core might deal with leading to a significant speedup for non-atomic reads and writes (which is most of them).
 
 Perhaps have a channel for the memory interface?
+
+Caching should be a priority.
+
+== Contributing
+
+As this is an active thesis project, I'm uncertain of how much "help" I'm allowed.
+However, feel free to pull the project, inspect the code, check for bugs etc..
+If you find any bugs (highly ilkely), I would appreciate an issue on GitLab or just a mail to mumblingdrunkard@protonmail.com.
+
 
 == Authors and acknowledgment
 
