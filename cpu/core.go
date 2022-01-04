@@ -2,7 +2,6 @@ package cpu
 
 import (
 	"fmt"
-	"gotos/memory"
 	"sync"
 	"sync/atomic"
 )
@@ -13,6 +12,11 @@ const (
 	HALTED  = 0 // Core is halted and will stay halted until Start() is called
 )
 
+const (
+	LITTLE Endian = 0
+	BIG           = 1
+)
+
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
@@ -21,15 +25,11 @@ type Core struct {
 	inst   uint32       // currently executing instruction
 	reg    [32]uint32   // registers
 	pc     uint32       // program counter
-	// Core doesn't have exclusive ownership of memory so we hold a pointer/reference to it instead
-	mem     *memory.Memory
-	memBase uint32
-	memSize uint32
+	mc     MemoryController
 }
 
 func (c *Core) fetch() uint32 {
-	pc := c.translateAddress(c.pc)
-	err, inst := c.mem.LoadWord(pc)
+	err, inst := c.mc.LoadInstruction(c.pc)
 
 	if err != nil {
 		panic(err)
@@ -39,25 +39,12 @@ func (c *Core) fetch() uint32 {
 }
 
 func (c *Core) UnsafeSetMemBase(base uint32) {
-	if base > c.mem.Size() {
-		panic("Tried to set base out of bounds of memory limits")
-	}
-
-	c.memBase = base
+	c.mc.mmu.base = base
 }
 
 func (c *Core) UnsafeSetMemSize(size uint32) {
-	c.memSize = size
-	c.reg[2] = size
-}
-
-// currently just base and bounds
-func (c *Core) translateAddress(address uint32) uint32 {
-	if address >= c.memSize {
-		panic("Address out of bounds")
-	}
-
-	return address + c.memBase
+	c.mc.mmu.size = size
+	c.reg[2] = c.mc.mmu.size
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
@@ -107,7 +94,7 @@ func (c *Core) UnsafeReset() {
 	}
 
 	// TODO: Initialize reg[2] with memory size
-	c.reg[2] = c.memSize
+	c.reg[2] = c.mc.mmu.size
 
 	c.pc = 0
 	// c.state.Store(HALTED)
@@ -169,6 +156,9 @@ func (c *Core) UnsafeStep() {
 
 	c.cycles += 1
 	inst := c.fetch()
+
+	// fmt.Printf("executing: %08X\n", inst)
+
 	c.execute(inst)
 	opcode := inst & 0x7f
 	if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
@@ -176,12 +166,10 @@ func (c *Core) UnsafeStep() {
 	}
 }
 
-func NewCoreWithMemory(m *memory.Memory) (c Core) {
+func NewCoreWithMemory(m *Memory) (c Core) {
 	c = Core{
-		cycles:  0,
-		mem:     m,
-		memBase: 0,
-		memSize: m.Size(),
+		cycles: 0,
+		mc:     NewMemoryController(m),
 	}
 
 	c.state.Store(HALTED)
