@@ -55,6 +55,8 @@ From the information I could find, arrays are thread safe as long as two threads
 This should be fine as the program is only ever read by the cores (threads) and all the cores have their own stack.
 ====
 
+UPDATE: This should be thread-safe now as all access to the shared `Memory` is behind a `sync.Mutex`.
+
 Currently, the `fib/fib.text` program is loaded at address 0.
 Four cores are initialized with their stack pointer at different locations in memory.
 The four cores then run in parallel until halting.

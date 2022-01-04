@@ -54,15 +54,15 @@ func main() {
 	core3.Wait()
 	core4.Wait()
 
-	fmt.Printf("core1: %d cycles\n", core1.Cycles())
+	fmt.Printf("\ncore1: %d cycles\n", core1.Cycles())
 	core1.DumpRegisters()
 
-	fmt.Printf("core2: %d cycles\n", core2.Cycles())
+	fmt.Printf("\ncore2: %d cycles\n", core2.Cycles())
 	core2.DumpRegisters()
 
-	fmt.Printf("core3: %d cycles\n", core3.Cycles())
+	fmt.Printf("\ncore3: %d cycles\n", core3.Cycles())
 	core3.DumpRegisters()
 
-	fmt.Printf("core4: %d cycles\n", core4.Cycles())
+	fmt.Printf("\ncore4: %d cycles\n", core4.Cycles())
 	core4.DumpRegisters()
 }
