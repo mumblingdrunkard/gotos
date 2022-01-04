@@ -16,7 +16,7 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 ==== riscv32g target
 
 - [ ] RV32I base instructions (37/40)
-- [ ] RV32M extension (0/8)
+- [*] RV32M extension (8/8)
 - [ ] RV32A extension (0/11)
 - [ ] RV32F extension (0/26)
 - [ ] RV32D extension (0/26)
