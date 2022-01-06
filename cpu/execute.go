@@ -50,6 +50,8 @@ func (c *Core) execute(inst uint32) {
 		c.misc_mem(inst)
 	case SYSTEM:
 		c.system(inst)
+	case AMO:
+		c.amo(inst)
 	default:
 		panic("Unknown instruction")
 	}
@@ -308,5 +310,24 @@ func (c *Core) system(inst uint32) {
 		c.ebreak(inst)
 	default:
 		panic("Illegal/unimplemented instruction format")
+	}
+}
+
+// AMO funct5
+const (
+	LR      uint32 = 0b00010
+	SC             = 0b00011
+	AMOSWAP        = 0b00001
+)
+
+func (c *Core) amo(inst uint32) {
+	funct5 := inst >> 27
+	switch funct5 {
+	case LR:
+		c.lr_w(inst)
+	case SC:
+		c.sc_w(inst)
+	case AMOSWAP:
+		c.amoswap_w(inst)
 	}
 }
