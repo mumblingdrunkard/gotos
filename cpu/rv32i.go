@@ -466,6 +466,30 @@ func (c *Core) sw(inst uint32) {
 func (c *Core) fence(inst uint32) {
 	// TODO
 	// no-op for now
+
+	// I think this should flush the cache?
+	// Will need some input from an expert or something.
+	c.mc.FlushAndInvalidateCache()
+
+	// This ensures no memory operations from this hart can be observed before any memory operation that comes after the FENCE.
+
+	// Any FENCE to invalidate the cache?
+
+	// Do I have to invalidate all the other caches?
+	// Seems pretty wasteful...
+	// Could I invalidate the cache for this hart with a fence?
+
+	// Locking will need some cache invalidation to ensure coherence
+
+	// Lock
+	//   Atomically acquire lock
+	//   Invalidate my cache (new data may be available from other harts)
+
+	// Unlock
+	//   Flush my cache
+	//   Atomically release lock
+
+	// The only way to guarantee memory consistency would then be by ensuring the lock is acquired before trying to access memory
 }
 
 // environment call
