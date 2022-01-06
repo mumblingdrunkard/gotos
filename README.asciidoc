@@ -1,5 +1,10 @@
 = Golang Teaching OS - gotos (wip)
 
+[NOTE]
+====
+The original idea was conceived of before I learned about _The Nachos Instructional Operating System_ <<nachos>>, but the core idea is very similar.
+====
+
 A framework to teach the concepts of Operating Systems.
 Build your very own operating system around emulated hardware.
 Arguably, the most important thing that can come out of this project is the system specification.
@@ -15,9 +20,9 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 ==== riscv32g target
 
-- [ ] RV32I base instructions (37/40)
+- [ ] RV32I base instructions (38/40)
 - [*] RV32M extension (8/8)
-- [ ] RV32A extension (0/11)
+- [*] RV32A extension (11/11)
 - [ ] RV32F extension (0/26)
 - [ ] RV32D extension (0/26)
 - [ ] Zicsr extension (0/6)
@@ -30,7 +35,6 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 === OS
 
 * [ ] Syscalls
-** [*] `void _Noreturn sys_exit(int)`
 
 * [ ] Synchronization primitives
 
@@ -48,19 +52,14 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 == Current state
 
-The `locktest` program being run shares a mutex and a counter between four cores/threads.
-All of them loop 1024 times each, locking the mutex, incrementing the counter, then unlocking the mutex.
-The cores then lock/read/unlock the value and return the read value.
-At least one core is guaranteed to return 4096 (4 * 1024) which can be read as `0x00001000` in register `[10]`.
-
-Part of the mutex implementation is taken from figure 8.2 in the RISC-V specification. <<rv5vol1>>
+The `locktest` program shares a counter between four cores, all of them atomically incrementing the counter in a loop.
+At least one core is bound to end with the final result `1024 * 64 * 4 = 0x00040000` placed in register `[10]`.
 
 == Contributing
 
 As this is an active thesis project, I'm uncertain of how much "help" I'm allowed.
 However, feel free to pull the project, inspect the code, check for bugs etc..
 If you find any bugs (highly ilkely), I would appreciate an issue on GitLab or just a mail to mumblingdrunkard@protonmail.com.
-
 
 == Authors and acknowledgment
 
@@ -74,8 +73,14 @@ This project is licensed under the traditional MIT license.
 [bibliography]
 == Bibliography
 
-- [[[rv5vol1]]] Andrew Waterman, Krste Asanović, John Hauser.
-_RISC-V ISA Specification: Volume 1, Unprivileged ISA v. 20191213_
+- [[[rv5vol1]]] Andrew Waterman and Krste Asanović.
+_RISC-V ISA Specification: Volume I, Unprivileged ISA v. 20191213_,
+https://riscv.org/technical/specifications/
 
-- [[[rv5vol2]]] Andrew Waterman, Krste Asanović, John Hauser.
-_RISC-V ISA Specification: Volume 2, Privileged Spec v. 20211203_
+- [[[rv5vol2]]] Andrew Waterman, Krste Asanović, and John Hauser.
+_RISC-V ISA Specification: Volume II, Privileged Spec v. 20211203_,
+https://riscv.org/technical/specifications/
+
+- [[[nachos]]] Wayne A. Christopher, Steven J. Procter, and Thomas E. Anderson,
+_The Nachos Instructional Operating System_,
+https://homes.cs.washington.edu/~tom/nachos/
