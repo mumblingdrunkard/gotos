@@ -42,7 +42,7 @@ type Core struct {
 	sync.WaitGroup
 	id     int
 	state  atomic.Value // core state (HALTED, HALTING, RUNNING)
-	cycles uint64       // number of cycles executed
+	retire uint64       // number of instructions executed
 	inst   uint32       // currently executing instruction
 	reg    [32]uint32   // registers
 	pc     uint32       // program counter
@@ -176,7 +176,7 @@ func NewCore() (c Core) {
 func (c *Core) UnsafeStep() {
 	// TODO: Check for interrupts
 
-	c.cycles += 1
+	c.retire += 1
 	inst := c.fetch()
 
 	// fmt.Printf("executing: %08X\n", inst)
@@ -192,7 +192,7 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 	c = Core{
 		rsets:  rs,
 		id:     id,
-		cycles: 0,
+		retire: 0,
 		mc:     NewMemoryController(m),
 	}
 
@@ -203,8 +203,8 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 	return
 }
 
-func (c *Core) Cycles() uint64 {
-	return c.cycles
+func (c *Core) InstructionsRetired() uint64 {
+	return c.retire
 }
 
 func (c *Core) Misses() uint64 {
