@@ -1,5 +1,7 @@
 package cpu
 
+import "encoding/binary"
+
 type MemoryController struct {
 	iCache Cache
 	dCache Cache
@@ -30,7 +32,7 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		// fmt.Printf("Loading line #%04X\n", lineNumber)
 		mc.mem.Lock()
-		mc.iCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.iCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		// fmt.Printf("Loaded line #%04X\n", lineNumber)
 		_, instruction := mc.iCache.LoadWord(address)
@@ -52,14 +54,16 @@ func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
 		return err, 0
 	}
 
-	// Don't worry about flags for now
 	if flags&F_READ == 0 {
+	}
+
+	if flags&F_NOCACHE != 0 {
 	}
 
 	if hit, b := mc.dCache.LoadByte(address); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, b := mc.dCache.LoadByte(address)
 		return nil, b
@@ -83,7 +87,7 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
 	if hit, hw := mc.dCache.LoadHalfWord(address); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, hw := mc.dCache.LoadHalfWord(address)
 		return nil, hw
@@ -107,7 +111,7 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 	if hit, w := mc.dCache.LoadWord(address); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, w := mc.dCache.LoadWord(address)
 		return nil, w
@@ -132,7 +136,7 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 	if hit := mc.dCache.StoreByte(address, b); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreByte(address, b)
 	}
@@ -155,7 +159,7 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
 	if hit := mc.dCache.StoreHalfWord(address, hw); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreHalfWord(address, hw)
 	}
@@ -178,12 +182,85 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 	if hit := mc.dCache.StoreWord(address, w); !hit {
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.Data[:])
+		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreWord(address, w)
 	}
 
 	return nil
+}
+
+func (mc *MemoryController) LoadThroughWord(address uint32) (error, uint32) {
+	err, address, flags := mc.mmu.Translate(address)
+
+	// ugly solution for now
+	if err != nil {
+		return err, 0
+	}
+
+	// Don't worry about flags for now
+	if flags&F_READ == 0 {
+	}
+
+	mc.mem.Lock()
+	var value uint32
+	if mc.mem.endian == BIG {
+		value = binary.BigEndian.Uint32(mc.mem.data[address : address+4])
+	} else {
+		value = binary.LittleEndian.Uint32(mc.mem.data[address : address+4])
+	}
+	// TODO: Verify the integrity of this
+	// store loaded value into cache if it's cached
+	// should the entire cache line just be invalidated instead perhaps?
+	mc.dCache.StoreWordNoDirty(address, value)
+	mc.mem.Unlock()
+
+	return nil, value
+}
+
+func (mc *MemoryController) StoreThroughWord(address uint32, w uint32) error {
+	err, address, flags := mc.mmu.Translate(address)
+
+	if err != nil {
+		return err
+	}
+
+	if flags&F_WRITE == 0 {
+	}
+
+	var bytes [4]uint8
+
+	if mc.mem.endian == BIG {
+		binary.BigEndian.PutUint32(bytes[:], w)
+	} else {
+		binary.LittleEndian.PutUint32(bytes[:], w)
+	}
+
+	mc.mem.Lock()
+	copy(mc.mem.data[address:], bytes[:])
+	mc.mem.Unlock()
+
+	// also update cache
+	mc.dCache.StoreWordNoDirty(address, w) // May be uncached, ignore
+
+	return nil
+}
+
+func (mc *MemoryController) FlushCache() {
+	// Flush data cache
+	mc.mem.Lock()
+	mc.dCache.FlushAll(mc.mem.data[:])
+	mc.mem.Unlock()
+}
+
+func (mc *MemoryController) InvalidateCache() {
+	// TODO
+	mc.dCache.InvalidateAll()
+}
+
+func (mc *MemoryController) FlushAndInvalidateCache() {
+	mc.FlushCache()
+	mc.InvalidateCache()
 }
 
 func NewMemoryController(m *Memory) MemoryController {

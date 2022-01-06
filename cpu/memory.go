@@ -12,7 +12,7 @@ const (
 
 type Memory struct {
 	sync.Mutex
-	Data   [MEMORY_SIZE]uint8
+	data   [MEMORY_SIZE]uint8
 	endian Endian
 }
 
@@ -21,11 +21,11 @@ type Memory struct {
 func (m *Memory) Write(address uint32, data []uint8) (error, int) {
 	m.Lock()
 	defer m.Unlock()
-	if address > uint32(len(m.Data)-len(data)) {
+	if address > uint32(len(m.data)-len(data)) {
 		return fmt.Errorf("Address out of range!"), 0
 	}
 
-	copy(m.Data[address:], data)
+	copy(m.data[address:], data)
 
 	return nil, len(data)
 }
@@ -34,12 +34,12 @@ func (m *Memory) Write(address uint32, data []uint8) (error, int) {
 func (m *Memory) Read(address, n uint32) (error, []uint8) {
 	m.Lock()
 	defer m.Unlock()
-	if address > uint32(len(m.Data))-n {
+	if address > uint32(len(m.data))-n {
 		return fmt.Errorf("Address out of range!"), nil
 	}
 
 	bytes := make([]uint8, n)
-	copy(bytes, m.Data[address:address+n])
+	copy(bytes, m.data[address:address+n])
 
 	return nil, bytes
 }
