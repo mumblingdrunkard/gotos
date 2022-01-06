@@ -48,30 +48,12 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 == Current state
 
-[NOTE]
-====
-I think this is thread-safe, but I am not sure.
-From the information I could find, arrays are thread safe as long as two threads never write to the same part of memory.
-This should be fine as the program is only ever read by the cores (threads) and all the cores have their own stack.
-====
+The `locktest` program being run shares a mutex and a counter between four cores/threads.
+All of them loop 1024 times each, locking the mutex, incrementing the counter, then unlocking the mutex.
+The cores then lock/read/unlock the value and return the read value.
+At least one core is guaranteed to return 4096 (4 * 1024) which can be read as `0x00001000` in register `[10]`.
 
-UPDATE: This should be thread-safe now as all access to the shared `Memory` is behind a `sync.Mutex`.
-
-Currently, the `fib/fib.text` program is loaded at address 0.
-Four cores are initialized with their stack pointer at different locations in memory.
-The four cores then run in parallel until halting.
-Memory without locking is significantly faster than memory with locking.
-This is a problem because in theory, multiple cores may access the same part of memory.
-
-Perhaps use some sort of frames?
-Have one large array for memory, divide this into frames, then have one RWMutex for each frame.
-Could try this out, though I believe caching is the way to go here.
-Caching means each core has their own copy of non-atomic data such as instructions and stack.
-This encompasses most of the memory accesses that a core might deal with leading to a significant speedup for non-atomic reads and writes (which is most of them).
-
-Perhaps have a channel for the memory interface?
-
-Caching should be a priority.
+Part of the mutex implementation is taken from figure 8.2 in the RISC-V specification. <<rv5vol1>>
 
 == Contributing
 
@@ -94,5 +76,6 @@ This project is licensed under the traditional MIT license.
 
 - [[[rv5vol1]]] Andrew Waterman, Krste Asanović, John Hauser.
 _RISC-V ISA Specification: Volume 1, Unprivileged ISA v. 20191213_
+
 - [[[rv5vol2]]] Andrew Waterman, Krste Asanović, John Hauser.
 _RISC-V ISA Specification: Volume 2, Privileged Spec v. 20211203_
