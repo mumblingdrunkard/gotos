@@ -13,5 +13,9 @@ int main() {
     unlock(m);
   }
 
-  return *ct;
+  lock(m);
+  int ret = (*ct);
+  unlock(m);
+
+  return ret;
 }
