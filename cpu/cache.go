@@ -14,7 +14,9 @@ const (
 
 const (
 	F_NONE  uint8 = 0x00
+	F_ALL         = 0xFF
 	F_DIRTY       = 0x01
+	F_STALE       = 0x02
 )
 
 type CacheLine struct {
@@ -35,6 +37,10 @@ type Cache struct {
 func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false, 0
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		return true, line.data[offset]
 	}
@@ -44,6 +50,10 @@ func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
 func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false, 0
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		if c.endian == BIG {
 			return true, binary.BigEndian.Uint16(line.data[offset : offset+2])
@@ -57,6 +67,10 @@ func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false, 0
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		if c.endian == BIG {
 			return true, binary.BigEndian.Uint32(line.data[offset : offset+4])
@@ -70,6 +84,10 @@ func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 func (c *Cache) StoreByte(address uint32, b uint8) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		line.data[offset] = b
 		line.flags |= F_DIRTY
@@ -82,6 +100,10 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 	// TODO
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		bytes := make([]uint8, 2)
 		if c.endian == BIG {
@@ -99,6 +121,10 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 func (c *Cache) StoreWord(address uint32, w uint32) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false
+		}
+
 		offset := address & CACHE_LINE_OFFSET_MASK
 		bytes := make([]uint8, 4)
 		if c.endian == BIG {
@@ -113,9 +139,39 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 	return false
 }
 
+func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
+	lineNumber := address >> CACHE_LINE_OFFSET_BITS
+	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&F_STALE != 0 {
+			return false
+		}
+
+		offset := address & CACHE_LINE_OFFSET_MASK
+		bytes := make([]uint8, 4)
+		if c.endian == BIG {
+			binary.BigEndian.PutUint32(bytes, w)
+		} else {
+			binary.LittleEndian.PutUint32(bytes, w)
+		}
+		copy(line.data[offset:offset+4], bytes)
+		return true
+	}
+	return false
+}
+
 func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool {
 	if _, present := c.lookup[lineNumber]; present {
-		return false
+		line := c.lookup[lineNumber]
+
+		if line.flags&F_STALE == 0 {
+			return false
+		}
+
+		// TODO a stale copy of the line is present, refresh the data in that space
+		address := lineNumber << CACHE_LINE_OFFSET_BITS
+		copy(line.data[:], src[address:address+CACHE_LINE_LENGTH])
+
+		return true
 	}
 
 	// if cache isn't full, just take the next open space
@@ -163,9 +219,18 @@ func (c *Cache) FlushAll(src []uint8) int {
 			address := line.number << CACHE_LINE_OFFSET_BITS
 			copy(src[address:], line.data[:])
 			flushed += 1
+			// clear the dirty bit
+			line.flags &= (F_DIRTY ^ F_ALL)
 		}
 	}
 	return flushed
+}
+
+func (c *Cache) InvalidateAll() {
+	for i := range c.lines {
+		line := &c.lines[i]
+		line.flags |= F_STALE
+	}
 }
 
 func NewCache(endian Endian) Cache {
