@@ -3,13 +3,16 @@ package cpu
 import "encoding/binary"
 
 type MemoryController struct {
-	iCache Cache
-	dCache Cache
-	mem    *Memory
-	mmu    MMU
+	iCache   Cache
+	dCache   Cache
+	mem      *Memory
+	mmu      MMU
+	misses   uint64
+	accesses uint64
 }
 
 func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uint32) {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// TODO check errors and shit
@@ -32,6 +35,7 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 
 	if hit, instruction := mc.iCache.LoadWord(address); !hit {
 		// fmt.Println("Cache miss!")
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		// fmt.Printf("Loading line #%04X\n", lineNumber)
 		mc.mem.Lock()
@@ -50,6 +54,7 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 
 // Return the byte stored at
 func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -64,6 +69,7 @@ func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
 	}
 
 	if hit, b := mc.dCache.LoadByte(address); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -76,6 +82,7 @@ func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
 }
 
 func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -88,6 +95,7 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
 	}
 
 	if hit, hw := mc.dCache.LoadHalfWord(address); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -100,6 +108,7 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
 }
 
 func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -112,6 +121,7 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 	}
 
 	if hit, w := mc.dCache.LoadWord(address); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -125,6 +135,7 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 
 // Return the byte stored at
 func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -137,6 +148,7 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 	}
 
 	if hit := mc.dCache.StoreByte(address, b); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -148,6 +160,7 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 }
 
 func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -160,6 +173,7 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
 	}
 
 	if hit := mc.dCache.StoreHalfWord(address, hw); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -171,6 +185,7 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
 }
 
 func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -183,6 +198,7 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 	}
 
 	if hit := mc.dCache.StoreWord(address, w); !hit {
+		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
 		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
@@ -194,6 +210,7 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 }
 
 func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32) {
+	mc.accesses++
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -220,6 +237,8 @@ func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32
 }
 
 func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) error {
+	mc.accesses++
+
 	err, address, flags := mc.mmu.Translate(address)
 
 	if err != nil {
