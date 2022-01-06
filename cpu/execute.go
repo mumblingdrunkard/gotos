@@ -318,6 +318,14 @@ const (
 	LR      uint32 = 0b00010
 	SC             = 0b00011
 	AMOSWAP        = 0b00001
+	AMOADD         = 0b00000
+	AMOXOR         = 0b00100
+	AMOAND         = 0b01100
+	AMOOR          = 0b01000
+	AMOMIN         = 0b10000
+	AMOMAX         = 0b10100
+	AMOMINU        = 0b11000
+	AMOMAXU        = 0b11100
 )
 
 func (c *Core) amo(inst uint32) {
@@ -329,5 +337,23 @@ func (c *Core) amo(inst uint32) {
 		c.sc_w(inst)
 	case AMOSWAP:
 		c.amoswap_w(inst)
+	case AMOADD:
+		c.amoadd_w(inst)
+	case AMOXOR:
+		c.amoxor_w(inst)
+	case AMOAND:
+		c.amoand_w(inst)
+	case AMOOR:
+		c.amoor_w(inst)
+	case AMOMIN:
+		c.amomin_w(inst)
+	case AMOMAX:
+		c.amomax_w(inst)
+	case AMOMINU:
+		c.amominu_w(inst)
+	case AMOMAXU:
+		c.amomaxu_w(inst)
+	default:
+		panic("Unknown instruction")
 	}
 }
