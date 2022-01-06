@@ -4,12 +4,12 @@ extern void sync();
 
 #include "mutex.h"
 
-void lock(struct mutex* m) {
+void lock(struct mutex *m) {
     acquire(&m->lock);
     sync();
 }
 
-void unlock(struct mutex* m) {
+void unlock(struct mutex *m) {
     sync();
     release(&m->lock);
 }
