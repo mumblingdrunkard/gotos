@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("c-programs/fib/fib.text")
+	f, err := os.Open("c-programs/locktest/locktest.text")
 	if err != nil {
 		panic(err)
 	}

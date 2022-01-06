@@ -7,9 +7,11 @@ int main() {
   struct mutex *m = (struct mutex *)4096;
   int *ct = (int *)2048;
 
-  lock(m);
-  (*ct)++;
-  unlock(m);
+  for (int i = 0; i < 1024; i++) {
+    lock(m);
+    (*ct)++;
+    unlock(m);
+  }
 
   return *ct;
 }
