@@ -17,14 +17,36 @@ const (
 	BIG           = 1
 )
 
+type ReservationSets struct {
+	sync.Mutex
+	sets   []map[uint32]bool
+	lookup []*map[uint32]bool
+}
+
+func NewReservationSets(n int) (rs ReservationSets) {
+	rs = ReservationSets{
+		sets:   make([]map[uint32]bool, n),
+		lookup: make([]*map[uint32]bool, n),
+	}
+
+	for i := 0; i < n; i++ {
+		rs.sets[i] = make(map[uint32]bool)
+		rs.lookup[i] = &rs.sets[i]
+	}
+
+	return
+}
+
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
+	id     int
 	state  atomic.Value // core state (HALTED, HALTING, RUNNING)
 	cycles uint64       // number of cycles executed
 	inst   uint32       // currently executing instruction
 	reg    [32]uint32   // registers
 	pc     uint32       // program counter
+	rsets  *ReservationSets
 	mc     MemoryController
 }
 
@@ -166,8 +188,10 @@ func (c *Core) UnsafeStep() {
 	}
 }
 
-func NewCoreWithMemory(m *Memory) (c Core) {
+func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int) (c Core) {
 	c = Core{
+		rsets:  rs,
+		id:     id,
 		cycles: 0,
 		mc:     NewMemoryController(m),
 	}
