@@ -207,6 +207,14 @@ func (c *Core) Cycles() uint64 {
 	return c.cycles
 }
 
+func (c *Core) Misses() uint64 {
+	return c.mc.misses
+}
+
+func (c *Core) Accesses() uint64 {
+	return c.mc.accesses
+}
+
 func (c *Core) State() interface{} {
 	return c.state.Load()
 }
