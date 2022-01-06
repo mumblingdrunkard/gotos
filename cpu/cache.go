@@ -170,6 +170,7 @@ func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 		// TODO a stale copy of the line is present, refresh the data in that space
 		address := lineNumber << CACHE_LINE_OFFSET_BITS
 		copy(line.data[:], src[address:address+CACHE_LINE_LENGTH])
+		line.flags &= (F_DIRTY ^ F_STALE ^ F_ALL) // remove stale and dirty bits
 
 		return true
 	}
