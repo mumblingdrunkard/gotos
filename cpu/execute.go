@@ -6,17 +6,18 @@ package cpu
 // TODO: Add decoding for RV32M extension
 
 const (
-	OP_IMM   uint32 = 0b0010011 // done
-	LUI             = 0b0110111 // done
-	AUIPC           = 0b0010111 // done
-	OP              = 0b0110011 // done
-	JAL             = 0b1101111 // done
-	JALR            = 0b1100111 // done
-	BRANCH          = 0b1100011 // done
-	LOAD            = 0b0000011 // done
-	STORE           = 0b0100011 // done
-	MISC_MEM        = 0b0001111 // done
-	SYSTEM          = 0b1110011 // done
+	OP_IMM   uint32 = 0b0010011
+	LUI             = 0b0110111
+	AUIPC           = 0b0010111
+	OP              = 0b0110011
+	JAL             = 0b1101111
+	JALR            = 0b1100111
+	BRANCH          = 0b1100011
+	LOAD            = 0b0000011
+	STORE           = 0b0100011
+	MISC_MEM        = 0b0001111
+	SYSTEM          = 0b1110011
+	AMO             = 0b0101111
 )
 
 func (c *Core) execute(inst uint32) {
