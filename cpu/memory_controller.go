@@ -12,6 +12,8 @@ type MemoryController struct {
 func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uint32) {
 	err, address, flags := mc.mmu.Translate(address)
 
+	// TODO check errors and shit
+
 	// ugly solution for now
 	if err != nil {
 		return
@@ -19,6 +21,7 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 
 	// Don't worry about flags for now
 	if flags&F_READ == 0 {
+		// TODO check flags
 	}
 
 	// check if address is misaligned
@@ -190,7 +193,7 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 	return nil
 }
 
-func (mc *MemoryController) LoadThroughWord(address uint32) (error, uint32) {
+func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32) {
 	err, address, flags := mc.mmu.Translate(address)
 
 	// ugly solution for now
@@ -202,7 +205,6 @@ func (mc *MemoryController) LoadThroughWord(address uint32) (error, uint32) {
 	if flags&F_READ == 0 {
 	}
 
-	mc.mem.Lock()
 	var value uint32
 	if mc.mem.endian == BIG {
 		value = binary.BigEndian.Uint32(mc.mem.data[address : address+4])
@@ -213,12 +215,11 @@ func (mc *MemoryController) LoadThroughWord(address uint32) (error, uint32) {
 	// store loaded value into cache if it's cached
 	// should the entire cache line just be invalidated instead perhaps?
 	mc.dCache.StoreWordNoDirty(address, value)
-	mc.mem.Unlock()
 
 	return nil, value
 }
 
-func (mc *MemoryController) StoreThroughWord(address uint32, w uint32) error {
+func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) error {
 	err, address, flags := mc.mmu.Translate(address)
 
 	if err != nil {
@@ -236,9 +237,7 @@ func (mc *MemoryController) StoreThroughWord(address uint32, w uint32) error {
 		binary.LittleEndian.PutUint32(bytes[:], w)
 	}
 
-	mc.mem.Lock()
 	copy(mc.mem.data[address:], bytes[:])
-	mc.mem.Unlock()
 
 	// also update cache
 	mc.dCache.StoreWordNoDirty(address, w) // May be uncached, ignore
