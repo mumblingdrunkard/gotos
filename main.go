@@ -32,27 +32,33 @@ func main() {
 	// It is possible that the stack for core4 could flow into the stack of core3 without causing an error.
 	// For now, we just assume/hope this doesn't happen.
 	// More advanced memory sharing techniques are required for this.
-	core1 := cpu.NewCoreWithMemory(&mem)
-	core1.UnsafeSetMemSize(1024 * 1024 * 1)
 
-	core2 := cpu.NewCoreWithMemory(&mem)
-	core2.UnsafeSetMemSize(1024 * 1024 * 2)
+	rs := cpu.NewReservationSets(4)
 
-	core3 := cpu.NewCoreWithMemory(&mem)
-	core3.UnsafeSetMemSize(1024 * 1024 * 3)
+	core0 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 0)
+	core0.UnsafeSetMemSize(1024 * 1024 * 1)
 
-	core4 := cpu.NewCoreWithMemory(&mem)
-	core4.UnsafeSetMemSize(1024 * 1024 * 4)
+	core1 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 1)
+	core1.UnsafeSetMemSize(1024 * 1024 * 2)
 
+	core2 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 2)
+	core2.UnsafeSetMemSize(1024 * 1024 * 3)
+
+	core3 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 3)
+	core3.UnsafeSetMemSize(1024 * 1024 * 4)
+
+	core0.StartAndWait()
 	core1.StartAndWait()
 	core2.StartAndWait()
 	core3.StartAndWait()
-	core4.StartAndWait()
 
+	core0.Wait()
 	core1.Wait()
 	core2.Wait()
 	core3.Wait()
-	core4.Wait()
+
+	fmt.Printf("\ncore0: %d cycles\n", core0.Cycles())
+	core0.DumpRegisters()
 
 	fmt.Printf("\ncore1: %d cycles\n", core1.Cycles())
 	core1.DumpRegisters()
@@ -62,7 +68,4 @@ func main() {
 
 	fmt.Printf("\ncore3: %d cycles\n", core3.Cycles())
 	core3.DumpRegisters()
-
-	fmt.Printf("\ncore4: %d cycles\n", core4.Cycles())
-	core4.DumpRegisters()
 }
