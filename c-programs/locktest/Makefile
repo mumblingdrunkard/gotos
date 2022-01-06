@@ -5,12 +5,13 @@ OBJCOPY = llvm-objcopy
 locktest.text: locktest
 	${OBJCOPY} -O binary locktest locktest.text
 
-locktest: obj/_start.o obj/main.o obj/sys_exit.o obj/sys_id.o obj/dbg_break.o obj/mutex.o obj/acquire.o obj/release.o obj/sync.o
+locktest: obj/_start.o obj/main.o obj/sys_exit.o obj/sys_id.o obj/dbg_break.o obj/mutex.o obj/acquire.o obj/release.o obj/sync.o obj/atomic_add.o
 	${CC} obj/_start.o \
 		  obj/main.o \
 		  obj/mutex.o \
 		  obj/acquire.o \
 		  obj/release.o \
+		  obj/atomic_add.o \
 		  obj/sync.o \
 		  obj/sys_exit.o \
 		  obj/sys_id.o \
@@ -31,6 +32,9 @@ obj/acquire.o: obj src/acquire.s
 
 obj/release.o: obj src/release.s
 	${CC} -c src/release.s -o obj/release.o
+
+obj/atomic_add.o: obj src/atomic_add.s
+	${CC} -c src/atomic_add.s -o obj/atomic_add.o
 
 obj/sync.o: obj src/sync.s
 	${CC} -c src/sync.s -o obj/sync.o
