@@ -4,6 +4,7 @@ import "fmt"
 
 // TODO raise exceptions when addresses are misaligned
 
+// TODO remove helper functions to not pollute namespace, only used once each anyway
 func max(a, b int32) int32 {
 	if a > b {
 		return a
