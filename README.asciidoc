@@ -26,7 +26,7 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 - [ ] RV32F extension (0/26)
 - [ ] RV32D extension (0/26)
 - [ ] Zicsr extension (0/6)
-- [ ] Zifencei extension (0/1)
+- [*] Zifencei extension (1/1)
 
 ==== Peripherals
 
