@@ -2,11 +2,6 @@ package cpu
 
 // TODO: Exceptions instead of panics
 
-// TODO: Fix decoding for OP
-// TODO: Add decoding for RV32M extension
-
-// TODO: Add decoding for FENCE_I
-
 func (c *Core) execute(inst uint32) {
 	const (
 		OP_IMM   uint32 = 0b0010011
