@@ -45,6 +45,9 @@ type Core struct {
 	retire uint64       // number of instructions executed
 	inst   uint32       // currently executing instruction
 	reg    [32]uint32   // registers
+	csr    [4096]uint32 // control and status register (probably don't need all of them, but eh)
+	fdirty bool         // floating-point register file dirty bit
+	freg   [32]uint64   // floating-point registers
 	pc     uint32       // program counter
 	rsets  *ReservationSets
 	mc     MemoryController
@@ -182,10 +185,9 @@ func (c *Core) UnsafeStep() {
 	// fmt.Printf("executing: %08X\n", inst)
 
 	c.execute(inst)
-	opcode := inst & 0x7f
-	if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
-		c.pc += 4
-	}
+	// if (opcode != BRANCH) && (opcode != JAL) && (opcode != JALR) {
+	c.pc += 4
+	// }
 }
 
 func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int) (c Core) {
