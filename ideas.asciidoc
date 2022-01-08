@@ -9,8 +9,9 @@ A collection of ideas for lab assigments relating to gotos.
 * The batch scheduler (FIFO)
 * Scheduling metrics
 * Optimal scheduling (SJF)
+** What even is "optimal"?
 
-.The shell (INTERLUDE)
+._The shell_ (INTERLUDE)
 * The run command
 * Command line arguments
 
@@ -24,7 +25,7 @@ A collection of ideas for lab assigments relating to gotos.
 * Round-robin scheduling
 * Stride scheduling
 
-.What about knife() and spoon()? (the process API) (INTERLUDE)
+._What about knife() and spoon()?_ (the process API) (INTERLUDE)
 * The fork() syscall
 * The exec() syscall
 
@@ -39,16 +40,16 @@ A collection of ideas for lab assigments relating to gotos.
 * Free space management
 ** Section header (linked list)
 
-.More, more! I want more! (simple dynamic memory allocation) (INTERLUDE)
-* Memory allocation
-* Finding free space
-* I don't want it anymore (free'ing space)
-
 .*What's mine is yours... SIKE!* (memory sectioning and protection)
 * Multiple base/bound pairs
 * Permission flags
 ** Raising exceptions
 * Handling the exception
+
+._More, more! I want more!_ (simple dynamic memory allocation) (INTERLUDE)
+* Memory allocation
+* Finding free space
+* I don't want it anymore (free'ing space)
 
 .*What? This isn't a book!* (paging)
 * Pages and frames
@@ -62,3 +63,10 @@ A collection of ideas for lab assigments relating to gotos.
 
 .Idk, I haven't gotten to this part yet
 * No really. I haven't read this part.
+
+
+== VOLUME IV - The C runtime
+
+This is currently out of the scope of the project, but it seems feasible and very educational to let the students implement their own C runtime.
+This would include adding syscalls, better memory allocation, standard streams, support for command line arguments, dynamic linking, etc. etc..
+There is lots of cool stuff that can be added to make the OS more usable as a programming target.
