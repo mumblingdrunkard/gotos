@@ -39,7 +39,7 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		// fmt.Printf("Loading line #%04X\n", lineNumber)
 		mc.mem.Lock()
-		mc.iCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.iCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		// fmt.Printf("Loaded line #%04X\n", lineNumber)
 		_, instruction := mc.iCache.LoadWord(address)
@@ -72,7 +72,7 @@ func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, b := mc.dCache.LoadByte(address)
 		return nil, b
@@ -98,7 +98,7 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, hw := mc.dCache.LoadHalfWord(address)
 		return nil, hw
@@ -124,7 +124,7 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, w := mc.dCache.LoadWord(address)
 		return nil, w
@@ -151,7 +151,7 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreByte(address, b)
 	}
@@ -176,7 +176,7 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreHalfWord(address, hw)
 	}
@@ -201,7 +201,7 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 		mc.misses++
 		lineNumber := address >> CACHE_LINE_OFFSET_BITS
 		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, F_NONE, mc.mem.data[:])
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreWord(address, w)
 	}

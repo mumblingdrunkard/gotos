@@ -13,11 +13,15 @@ const (
 )
 
 const (
-	F_NONE  uint8 = 0x00
-	F_ALL         = 0xFF
-	F_DIRTY       = 0x01
-	F_STALE       = 0x02
+	CACHE_F_NONE  uint8 = 0x00
+	CACHE_F_ALL         = 0xFF
+	CACHE_F_DIRTY       = 0x01
+	CACHE_F_STALE       = 0x02
+	CACHE_F_WRITE       = 0x04
+	CACHE_F_READ        = 0x08
 )
+
+// TODO Cache read/write permission flags
 
 type CacheLine struct {
 	number uint32
@@ -37,7 +41,7 @@ type Cache struct {
 func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false, 0
 		}
 
@@ -50,7 +54,7 @@ func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
 func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false, 0
 		}
 
@@ -67,7 +71,7 @@ func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false, 0
 		}
 
@@ -84,13 +88,13 @@ func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 func (c *Cache) StoreByte(address uint32, b uint8) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false
 		}
 
 		offset := address & CACHE_LINE_OFFSET_MASK
 		line.data[offset] = b
-		line.flags |= F_DIRTY
+		line.flags |= CACHE_F_DIRTY
 		return true
 	}
 	return false
@@ -100,7 +104,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 	// TODO
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false
 		}
 
@@ -112,7 +116,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 			binary.LittleEndian.PutUint16(bytes, hw)
 		}
 		copy(line.data[offset:offset+2], bytes)
-		line.flags |= F_DIRTY
+		line.flags |= CACHE_F_DIRTY
 		return true
 	}
 	return false
@@ -121,7 +125,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 func (c *Cache) StoreWord(address uint32, w uint32) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false
 		}
 
@@ -133,7 +137,7 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 			binary.LittleEndian.PutUint32(bytes, w)
 		}
 		copy(line.data[offset:offset+4], bytes)
-		line.flags |= F_DIRTY
+		line.flags |= CACHE_F_DIRTY
 		return true
 	}
 	return false
@@ -142,7 +146,7 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&F_STALE != 0 {
+		if line.flags&CACHE_F_STALE != 0 {
 			return false
 		}
 
@@ -163,14 +167,14 @@ func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	if _, present := c.lookup[lineNumber]; present {
 		line := c.lookup[lineNumber]
 
-		if line.flags&F_STALE == 0 {
+		if line.flags&CACHE_F_STALE == 0 {
 			return false
 		}
 
 		// TODO a stale copy of the line is present, refresh the data in that space
 		address := lineNumber << CACHE_LINE_OFFSET_BITS
 		copy(line.data[:], src[address:address+CACHE_LINE_LENGTH])
-		line.flags &= (F_DIRTY ^ F_STALE ^ F_ALL) // remove stale and dirty bits
+		line.flags &= (CACHE_F_DIRTY ^ CACHE_F_STALE ^ CACHE_F_ALL) // remove stale and dirty bits
 
 		return true
 	}
@@ -189,7 +193,7 @@ func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 
 	// check if it's dirty, if so, flush
 	// if the cache isn't full, this shouldn'd be dirty
-	if eject.flags&F_DIRTY != 0 {
+	if eject.flags&CACHE_F_DIRTY != 0 {
 		copy(src[address:], eject.data[:])
 	}
 
@@ -216,12 +220,12 @@ func (c *Cache) FlushAll(src []uint8) int {
 
 		// check if it's dirty, if so, flush
 		// if the cache isn't full, this shouldn'd be dirty
-		if line.flags&F_DIRTY != 0 {
+		if line.flags&CACHE_F_DIRTY != 0 {
 			address := line.number << CACHE_LINE_OFFSET_BITS
 			copy(src[address:], line.data[:])
 			flushed += 1
 			// clear the dirty bit
-			line.flags &= (F_DIRTY ^ F_ALL)
+			line.flags &= (CACHE_F_DIRTY ^ CACHE_F_ALL)
 		}
 	}
 	return flushed
@@ -230,7 +234,7 @@ func (c *Cache) FlushAll(src []uint8) int {
 func (c *Cache) InvalidateAll() {
 	for i := range c.lines {
 		line := &c.lines[i]
-		line.flags |= F_STALE
+		line.flags |= CACHE_F_STALE
 	}
 }
 
