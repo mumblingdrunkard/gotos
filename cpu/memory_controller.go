@@ -272,8 +272,11 @@ func (mc *MemoryController) FlushCache() {
 }
 
 func (mc *MemoryController) InvalidateCache() {
-	// TODO
 	mc.dCache.InvalidateAll()
+}
+
+func (mc *MemoryController) InvalidateInstructionCache() {
+	mc.iCache.InvalidateAll()
 }
 
 func (mc *MemoryController) FlushAndInvalidateCache() {
