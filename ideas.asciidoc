@@ -1,0 +1,64 @@
+= gotos lab assignments
+
+A collection of ideas for lab assigments relating to gotos.
+
+== VOLUME I - Processes and Scheduling
+
+.The good, the bad, and the process (process abstraction and scheduling)
+* Loading your first program
+* The batch scheduler (FIFO)
+* Scheduling metrics
+* Optimal scheduling (SJF)
+
+.The shell (INTERLUDE)
+* The run command
+* Command line arguments
+
+.It's all an illusion (preemptive scheduling, concurrent execution)
+* Concurrent execution
+* Interrupts
+* New-job-arrived-interrupt
+* Interrupt handler
+* SJRF scheduling
+* Timer interrupt for preemption
+* Round-robin scheduling
+* Stride scheduling
+
+.What about knife() and spoon()? (the process API) (INTERLUDE)
+* The fork() syscall
+* The exec() syscall
+
+
+== VOLUME II - Virtual memory
+
+.It's all an illusion II - Electric boogaloo (simple virtual memory)
+* Base/bound virtual memory
+* The mmu
+* Translate and check
+* Again!? (SIGSEGV) (INTERLUDE)
+* Free space management
+** Section header (linked list)
+
+.More, more! I want more! (simple dynamic memory allocation) (INTERLUDE)
+* Memory allocation
+* Finding free space
+* I don't want it anymore (free'ing space)
+
+.What's mine is yours... SIKE! (memory sectioning and protection)
+* Multiple base/bound pairs
+* Permission flags
+** Raising exceptions
+* Handling the exception
+
+.What? This isn't a book! (paging)
+* Pages and frames
+
+.What? This isn't the library! (multi-level page tables)
+* More flags!
+* Swapping
+
+
+== VOLUME III - Filesystems
+
+.Idk, I haven't gotten to this part yet
+* No really. I haven't read this part.
