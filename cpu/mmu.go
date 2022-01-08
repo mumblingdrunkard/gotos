@@ -4,6 +4,7 @@ const (
 	F_READ    uint8 = 0x01
 	F_WRITE         = 0x02
 	F_NOCACHE       = 0x04 // if I ever get around to doing MMIO
+	F_EXEC          = 0x08
 )
 
 type MMU struct {
