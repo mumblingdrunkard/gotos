@@ -1,6 +1,6 @@
 package cpu
 
-// TODO: Exceptions
+// TODO: Exceptions instead of panics
 
 // TODO: Fix decoding for OP
 // TODO: Add decoding for RV32M extension
@@ -21,6 +21,13 @@ func (c *Core) execute(inst uint32) {
 		MISC_MEM        = 0b0001111
 		SYSTEM          = 0b1110011
 		AMO             = 0b0101111
+		LOAD_FP         = 0b0000111 // TODO
+		STORE_FP        = 0b0100111 // TODO
+		OP_FP           = 0b1010011 // TODO
+		FMADD           = 0b1000011 // TODO
+		FMSUB           = 0b1000111 // TODO
+		FNMSUB          = 0b1001011 // TODO
+		FNMADD          = 0b1001111 // TODO
 	)
 	// Register 0 is hardwired with all 0s have to reset to 0 for every
 	// cycle because some instructions may use this as their /dev/null
@@ -258,18 +265,47 @@ func (c *Core) execute(inst uint32) {
 			panic("Illegal instruction format")
 		}
 	case SYSTEM:
+		// system funct3
+		const (
+			ECALL_EBREAK uint32 = 0b000
+			CSRRW               = 0b001
+			CSRRS               = 0b010
+			CSRRC               = 0b011
+			CSRRWI              = 0b101
+			CSRRSI              = 0b110
+			CSRRCI              = 0b111
+		)
+
 		// system funct12
 		const (
 			ECALL  uint32 = 0b000000000000
 			EBREAK        = 0b000000000001
 		)
 
-		funct12 := (inst >> 20) & 0xfff
-		switch funct12 {
-		case ECALL:
-			c.ecall(inst)
-		case EBREAK:
-			c.ebreak(inst)
+		funct3 := (inst >> 12) & 0x7
+		switch funct3 {
+		case ECALL_EBREAK:
+			funct12 := (inst >> 20) & 0xfff
+			switch funct12 {
+			case ECALL:
+				c.ecall(inst)
+			case EBREAK:
+				c.ebreak(inst)
+			default:
+				panic("Illegal/unimplemented instruction format")
+			}
+		case CSRRW:
+			c.csrrw(inst)
+		case CSRRS:
+			c.csrrs(inst)
+		case CSRRC:
+			c.csrrc(inst)
+		case CSRRWI:
+			c.csrrwi(inst)
+		case CSRRSI:
+			c.csrrsi(inst)
+		case CSRRCI:
+			c.csrrci(inst)
 		default:
 			panic("Illegal/unimplemented instruction format")
 		}
@@ -313,6 +349,325 @@ func (c *Core) execute(inst uint32) {
 			c.amominu_w(inst)
 		case AMOMAXU:
 			c.amomaxu_w(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case LOAD_FP:
+		const (
+			W uint32 = 0b010
+			D        = 0b011
+		)
+
+		funct3 := (inst >> 12) & 0x7
+		switch funct3 {
+		case W:
+			c.flw(inst)
+		case D:
+			c.fld(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case STORE_FP:
+		const (
+			W uint32 = 0b010
+			D        = 0b011
+		)
+
+		funct3 := (inst >> 12) & 0x7
+		switch funct3 {
+		case W:
+			c.fsw(inst)
+		case D:
+			c.fsd(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case OP_FP:
+		const (
+			// F extension
+			FADD_S              uint32 = 0b0000000
+			FSUB_S                     = 0b0000100
+			FMUL_S                     = 0b0001000
+			FDIV_S                     = 0b0001100
+			FSQRT_S                    = 0b0101100
+			FSGNJZ_S                   = 0b0010000 // FSGNJ_S, FSGNJN_S, FSGNJX_S
+			FMNX_S                     = 0b0010100
+			FCVT_WX_S                  = 0b1100000 // FCVT_W_S, FCVT_WU_S
+			FMV_X_W_OR_FCLASS_S        = 0b1110000 // FMV_X_W, FCLASS_S
+			FCMP_S                     = 0b1010000 // FEQ_S, FLT_S, FLE_S
+			FCVT_S_WX                  = 0b1101000 // FCVT_S_W, FCVT_S_WU
+			FMV_W_X                    = 0b1111000
+			// D extension
+			FADD_D    uint32 = 0b0000001
+			FSUB_D           = 0b0000101
+			FMUL_D           = 0b0001001
+			FDIV_D           = 0b0001101
+			FSQRT_D          = 0b0101101
+			FSGNJZ_D         = 0b0010001 // FDGNJ_D, FDGNJN_D, FDGNJX_D
+			FMNX_D           = 0b0010101 // FMIN_D, FMAX_D
+			FCVT_S_D         = 0b0100000
+			FCVT_D_S         = 0b0100001
+			FCMP_D           = 0b1010001 // FEQ_D, FLT_D, FLE_D
+			FCLASS_D         = 0b1110001
+			FCVT_WX_D        = 0b1100001 // FCVT_W_D, FCVT_WU_D
+			FCVT_D_WX        = 0b1101001 // FCVT_D_W, FCVT_D_WU
+		)
+
+		funct7 := (inst >> 25) & 0x7f
+
+		switch funct7 {
+		// F extension
+		case FADD_S:
+			c.fadd_s(inst)
+		case FSUB_S:
+			c.fsub_s(inst)
+		case FMUL_S:
+			c.fmul_s(inst)
+		case FDIV_S:
+			c.fdiv_s(inst)
+		case FSQRT_S:
+			c.fsqrt_s(inst)
+		case FSGNJZ_S:
+			const (
+				FSGNJ_S  uint32 = 0b000
+				FSGNJN_S        = 0b001
+				FSGNJX_S        = 0b010
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FSGNJ_S:
+				c.fsgnj_s(inst)
+			case FSGNJN_S:
+				c.fsgnjn_s(inst)
+			case FSGNJX_S:
+				c.fsgnjx_s(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FMNX_S:
+			const (
+				FMIN_S uint32 = 0b000
+				FMAX_S        = 0b001
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FMIN_S:
+				c.fmin_s(inst)
+			case FMAX_S:
+				c.fmax_s(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCVT_WX_S:
+			const (
+				FCVT_W_S  uint32 = 0b00000
+				FCVT_WU_S        = 0b00001
+			)
+			funct5 := (inst >> 20) & 0x1f
+			switch funct5 {
+			case FCVT_W_S:
+				c.fcvt_w_s(inst)
+			case FCVT_WU_S:
+				c.fcvt_wu_s(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FMV_X_W_OR_FCLASS_S:
+			const (
+				FMV_X_W  uint32 = 0b000
+				FCLASS_S        = 0b001
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FMV_X_W:
+				c.fmv_x_w(inst)
+			case FCLASS_S:
+				c.fclass_s(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCMP_S:
+			const (
+				FEQ_S uint32 = 0b010
+				FLT_S        = 0b001
+				FLE_S        = 0b000
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FEQ_S:
+				c.feq_s(inst)
+			case FLT_S:
+				c.flt_s(inst)
+			case FLE_S:
+				c.fle_s(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCVT_S_WX:
+			const (
+				FCVT_S_W  uint32 = 0b00000
+				FCVT_S_WU        = 0b00001
+			)
+			funct5 := (inst >> 20) & 0x1f
+			switch funct5 {
+			case FCVT_S_W:
+				c.fcvt_s_w(inst)
+			case FCVT_S_WU:
+				c.fcvt_s_wu(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FMV_W_X:
+			c.fmv_w_x(inst)
+		// D extension
+		case FADD_D:
+			c.fadd_d(inst)
+		case FSUB_D:
+			c.fsub_d(inst)
+		case FMUL_D:
+			c.fmul_d(inst)
+		case FDIV_D:
+			c.fdiv_d(inst)
+		case FSQRT_D:
+			c.fsqrt_d(inst)
+		case FSGNJZ_D:
+			const (
+				FSGNJ_D  uint32 = 0b000
+				FSGNJN_D        = 0b001
+				FSGNJX_D        = 0b010
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FSGNJ_D:
+				c.fsgnj_d(inst)
+			case FSGNJN_D:
+				c.fsgnjn_d(inst)
+			case FSGNJX_D:
+				c.fsgnjn_d(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FMNX_D:
+			const (
+				FMIN_D uint32 = 0b000
+				FMAX_D        = 0b001
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FMIN_D:
+				c.fmin_d(inst)
+			case FMAX_D:
+				c.fmax_d(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCVT_S_D:
+			c.fcvt_s_d(inst)
+		case FCVT_D_S:
+			c.fcvt_d_s(inst)
+		case FCMP_D:
+			const (
+				FEQ_D uint32 = 0b010
+				FLT_D        = 0b001
+				FLE_D        = 0b000
+			)
+			funct3 := (inst >> 12) & 0x7
+			switch funct3 {
+			case FEQ_D:
+				c.feq_d(inst)
+			case FLT_D:
+				c.flt_d(inst)
+			case FLE_D:
+				c.fle_d(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCLASS_D:
+			c.fclass_d(inst)
+		case FCVT_WX_D:
+			const (
+				FCVT_W_D  uint32 = 0b00000
+				FCVT_WU_D        = 0b00001
+			)
+			funct5 := (inst >> 20) & 0x1f
+			switch funct5 {
+			case FCVT_W_D:
+				c.fcvt_w_d(inst)
+			case FCVT_WU_D:
+				c.fcvt_wu_d(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		case FCVT_D_WX:
+			const (
+				FCVT_D_W  uint32 = 0b00000
+				FCVT_D_WU        = 0b00001
+			)
+			funct5 := (inst >> 20) & 0x1f
+			switch funct5 {
+			case FCVT_D_W:
+				c.fcvt_d_w(inst)
+			case FCVT_D_WU:
+				c.fcvt_d_wu(inst)
+			default:
+				panic("Unknown instruction")
+			}
+		default:
+			panic("Unknown instruction")
+		}
+	case FMADD:
+		const (
+			S uint32 = 0b00
+			D        = 0b01
+		)
+		format2 := (inst >> 25) & 0x3
+		switch format2 {
+		case S:
+			c.fmadd_s(inst)
+		case D:
+			c.fmadd_d(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case FMSUB:
+		const (
+			S uint32 = 0b00
+			D        = 0b01
+		)
+		format2 := (inst >> 25) & 0x3
+		switch format2 {
+		case S:
+			c.fmsub_s(inst)
+		case D:
+			c.fmsub_d(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case FNMSUB:
+		const (
+			S uint32 = 0b00
+			D        = 0b01
+		)
+		format2 := (inst >> 25) & 0x3
+		switch format2 {
+		case S:
+			c.fnmadd_s(inst)
+		case D:
+			c.fnmadd_d(inst)
+		default:
+			panic("Unknown instruction")
+		}
+	case FNMADD:
+		const (
+			S uint32 = 0b00
+			D        = 0b01
+		)
+		format2 := (inst >> 25) & 0x3
+		switch format2 {
+		case S:
+			c.fnmsub_s(inst)
+		case D:
+			c.fnmsub_d(inst)
 		default:
 			panic("Unknown instruction")
 		}
