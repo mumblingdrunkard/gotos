@@ -17,8 +17,6 @@ const (
 	CACHE_F_ALL         = 0xFF
 	CACHE_F_DIRTY       = 0x01
 	CACHE_F_STALE       = 0x02
-	CACHE_F_WRITE       = 0x04
-	CACHE_F_READ        = 0x08
 )
 
 // TODO Cache read/write permission flags
