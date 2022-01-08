@@ -5,8 +5,7 @@ type InterruptExceptionCode uint32
 
 // Exception codes when Interrupt is 1 (see risc-v privileged spec table 8.6)
 const (
-	RESERVED_0                            InterruptExceptionCode = 0
-	SUPERVISOR_SOFTWARE_INTERRUPT                                = 1
+	SUPERVISOR_SOFTWARE_INTERRUPT         InterruptExceptionCode = 1
 	VIRTUAL_SUPERVISOR_SOFTWARE_INTERRUPT                        = 2
 	MACHINE_SOFTWARE_INTERRUPT                                   = 3
 	SUPERVISOR_TIMER_INTERRUPT                                   = 5
@@ -42,5 +41,5 @@ const (
 )
 
 func (c *Core) trap() {
-
+	// TODO
 }
