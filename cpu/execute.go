@@ -16,13 +16,13 @@ func (c *Core) execute(inst uint32) {
 		MISC_MEM        = 0b0001111
 		SYSTEM          = 0b1110011
 		AMO             = 0b0101111
-		LOAD_FP         = 0b0000111 // TODO
-		STORE_FP        = 0b0100111 // TODO
-		OP_FP           = 0b1010011 // TODO
-		FMADD           = 0b1000011 // TODO
-		FMSUB           = 0b1000111 // TODO
-		FNMSUB          = 0b1001011 // TODO
-		FNMADD          = 0b1001111 // TODO
+		LOAD_FP         = 0b0000111
+		STORE_FP        = 0b0100111
+		OP_FP           = 0b1010011
+		FMADD           = 0b1000011
+		FMSUB           = 0b1000111
+		FNMSUB          = 0b1001011
+		FNMADD          = 0b1001111
 	)
 	// Register 0 is hardwired with all 0s have to reset to 0 for every
 	// cycle because some instructions may use this as their /dev/null
