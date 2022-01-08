@@ -284,7 +284,8 @@ func (c *Core) store(inst uint32) {
 
 // misc-mem funct3
 const (
-	FENCE uint32 = 0b000
+	FENCE   uint32 = 0b000
+	FENCE_I        = 0b001
 )
 
 func (c *Core) misc_mem(inst uint32) {
@@ -292,6 +293,8 @@ func (c *Core) misc_mem(inst uint32) {
 	switch funct3 {
 	case FENCE:
 		c.fence(inst)
+	case FENCE_I:
+		c.fence_i(inst)
 	default:
 		panic("Illegal instruction format")
 	}
