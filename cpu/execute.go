@@ -5,6 +5,8 @@ package cpu
 // TODO: Fix decoding for OP
 // TODO: Add decoding for RV32M extension
 
+// TODO: Add decoding for FENCE_I
+
 const (
 	OP_IMM   uint32 = 0b0010011
 	LUI             = 0b0110111
