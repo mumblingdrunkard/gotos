@@ -1,6 +1,8 @@
 package cpu
 
 // TODO how to support the different rounding modes?
+// Go has math/big/float which supports the IEEE rounding modes.
+// Find out how this works
 
 func (c *Core) flw(inst uint32) {
 	// TODO
