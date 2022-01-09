@@ -42,11 +42,11 @@ type Core struct {
 	sync.WaitGroup
 	id      int
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
-	retired uint64       // number of instructions executed
-	reg     [32]uint32   // registers
-	csr     [4096]uint32 // control and status register (probably don't need all of them, but eh)
-	fdirty  bool         // floating-point register file dirty bit
-	freg    [32]uint64   // floating-point registers
+	retired uint64       // number of instructions executed/retired
+	reg     [32]uint32   // normal registers
+	csr     [4096]uint32 // control and status registers
+	fdirty  bool         // fp register file dirty bit
+	freg    [32]uint64   // fp registers
 	pc      uint32       // program counter
 	rsets   *ReservationSets
 	mc      MemoryController
