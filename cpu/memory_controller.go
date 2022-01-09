@@ -223,7 +223,7 @@ func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32
 	}
 
 	var value uint32
-	if mc.mem.endian == BIG {
+	if mc.mem.endian == ENDIAN_BIG {
 		value = binary.BigEndian.Uint32(mc.mem.data[address : address+4])
 	} else {
 		value = binary.LittleEndian.Uint32(mc.mem.data[address : address+4])
@@ -250,7 +250,7 @@ func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) err
 
 	var bytes [4]uint8
 
-	if mc.mem.endian == BIG {
+	if mc.mem.endian == ENDIAN_BIG {
 		binary.BigEndian.PutUint32(bytes[:], w)
 	} else {
 		binary.LittleEndian.PutUint32(bytes[:], w)

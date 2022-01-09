@@ -57,7 +57,7 @@ func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 		}
 
 		offset := address & CACHE_LINE_OFFSET_MASK
-		if c.endian == BIG {
+		if c.endian == ENDIAN_BIG {
 			return true, binary.BigEndian.Uint16(line.data[offset : offset+2])
 		} else {
 			return true, binary.LittleEndian.Uint16(line.data[offset : offset+2])
@@ -74,7 +74,7 @@ func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 		}
 
 		offset := address & CACHE_LINE_OFFSET_MASK
-		if c.endian == BIG {
+		if c.endian == ENDIAN_BIG {
 			return true, binary.BigEndian.Uint32(line.data[offset : offset+4])
 		} else {
 			return true, binary.LittleEndian.Uint32(line.data[offset : offset+4])
@@ -108,7 +108,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 
 		offset := address & CACHE_LINE_OFFSET_MASK
 		bytes := make([]uint8, 2)
-		if c.endian == BIG {
+		if c.endian == ENDIAN_BIG {
 			binary.BigEndian.PutUint16(bytes, hw)
 		} else {
 			binary.LittleEndian.PutUint16(bytes, hw)
@@ -129,7 +129,7 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 
 		offset := address & CACHE_LINE_OFFSET_MASK
 		bytes := make([]uint8, 4)
-		if c.endian == BIG {
+		if c.endian == ENDIAN_BIG {
 			binary.BigEndian.PutUint32(bytes, w)
 		} else {
 			binary.LittleEndian.PutUint32(bytes, w)
@@ -150,7 +150,7 @@ func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
 
 		offset := address & CACHE_LINE_OFFSET_MASK
 		bytes := make([]uint8, 4)
-		if c.endian == BIG {
+		if c.endian == ENDIAN_BIG {
 			binary.BigEndian.PutUint32(bytes, w)
 		} else {
 			binary.LittleEndian.PutUint32(bytes, w)

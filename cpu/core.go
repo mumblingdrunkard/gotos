@@ -7,14 +7,51 @@ import (
 )
 
 const (
-	RUNNING = 2 // Core is running and executing instructions
-	HALTING = 1 // Core is running and executing instructions, but will turn off in the next cycle
-	HALTED  = 0 // Core is halted and will stay halted until Start() is called
+	STATE_RUNNING = 2 // Core is running and executing instructions
+	STATE_HALTING = 1 // Core is running and executing instructions, but will turn off in the next cycle
+	STATE_HALTED  = 0 // Core is halted and will stay halted until Start() is called
+)
+
+// Register mnemonics
+const (
+	REG_ZERO = 0  // Hard-wired zero
+	REG_RA   = 1  // Return address
+	REG_SP   = 2  // Stack pointer
+	REG_GP   = 3  // Global pointer
+	REG_TP   = 4  // Thread pointer
+	REG_T0   = 5  // Temporary/alternate link register
+	REG_T1   = 6  // Temporaries
+	REG_T2   = 7  //
+	REG_S0   = 8  // Saved register/frame pointer
+	REG_FP   = 8  //
+	REG_S1   = 9  // Saved register
+	REG_A0   = 10 // Function arguments/return values
+	REG_A1   = 11 //
+	REG_A2   = 12 //
+	REG_A3   = 13 //
+	REG_A4   = 14 //
+	REG_A5   = 15 //
+	REG_A6   = 16 //
+	REG_A7   = 17 //
+	REG_S2   = 18 // Saved registers
+	REG_S3   = 19 //
+	REG_S4   = 20 //
+	REG_S5   = 21 //
+	REG_S6   = 22 //
+	REG_S7   = 23 //
+	REG_S8   = 24 //
+	REG_S9   = 25 //
+	REG_S10  = 26 //
+	REG_S11  = 27 //
+	REG_T3   = 28 // Temporaries
+	REG_T4   = 29 //
+	REG_T5   = 30 //
+	REG_T6   = 31 //
 )
 
 const (
-	LITTLE Endian = 0
-	BIG           = 1
+	ENDIAN_LITTLE Endian = 0
+	ENDIAN_BIG           = 1
 )
 
 type ReservationSets struct {
@@ -73,7 +110,7 @@ func (c *Core) UnsafeSetMemSize(size uint32) {
 
 func (c *Core) run(wg *sync.WaitGroup) {
 	// Start running core in loop
-	if !c.state.CompareAndSwap(HALTED, RUNNING) {
+	if !c.state.CompareAndSwap(STATE_HALTED, STATE_RUNNING) {
 		panic("Attempted to call `run()` on a core that was not in the HALTED state")
 	}
 
@@ -82,8 +119,8 @@ func (c *Core) run(wg *sync.WaitGroup) {
 	for {
 		// Test if state is HALTING, swap to HALTED if so, then break
 		// CompareAndSwap makes this very slow so we use Load instead
-		if c.state.Load() == HALTING {
-			c.state.Store(HALTED)
+		if c.state.Load() == STATE_HALTING {
+			c.state.Store(STATE_HALTED)
 			break
 		}
 
@@ -130,11 +167,11 @@ func (c *Core) UnsafeReset() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndWait() {
-	if c.state.Load() == HALTED {
+	if c.state.Load() == STATE_HALTED {
 		return
 	}
 
-	if !c.state.CompareAndSwap(RUNNING, HALTING) {
+	if !c.state.CompareAndSwap(STATE_RUNNING, STATE_HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -147,7 +184,7 @@ func (c *Core) HaltAndWait() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if !c.state.CompareAndSwap(RUNNING, HALTING) {
+	if !c.state.CompareAndSwap(STATE_RUNNING, STATE_HALTING) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -197,7 +234,7 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 		mc:      NewMemoryController(m),
 	}
 
-	c.state.Store(HALTED)
+	c.state.Store(STATE_HALTED)
 
 	c.UnsafeReset()
 
