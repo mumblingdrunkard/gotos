@@ -43,7 +43,6 @@ type Core struct {
 	id      int
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
 	retired uint64       // number of instructions executed
-	inst    uint32       // currently executing instruction
 	reg     [32]uint32   // registers
 	csr     [4096]uint32 // control and status register (probably don't need all of them, but eh)
 	fdirty  bool         // floating-point register file dirty bit
