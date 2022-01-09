@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"gotos/cpu"
 	"os"
+	"sync"
 )
 
 func main() {
-	f, err := os.Open("c-programs/locktest/locktest.text")
+	f, err := os.Open("c-programs/fib/fib.text")
 	if err != nil {
 		panic(err)
 	}
@@ -47,10 +48,12 @@ func main() {
 	core3 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 3)
 	core3.UnsafeSetMemSize(1024 * 1024 * 4)
 
-	core0.StartAndWait()
-	core1.StartAndWait()
-	core2.StartAndWait()
-	core3.StartAndWait()
+	var wg sync.WaitGroup
+	core0.StartAndSync(&wg)
+	core1.StartAndSync(&wg)
+	core2.StartAndSync(&wg)
+	core3.StartAndSync(&wg)
+	// don't need to wait on wg since we're waiting on cores
 
 	core0.Wait()
 	core1.Wait()

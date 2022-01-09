@@ -40,17 +40,17 @@ func NewReservationSets(n int) (rs ReservationSets) {
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
-	id     int
-	state  atomic.Value // core state (HALTED, HALTING, RUNNING)
-	retire uint64       // number of instructions executed
-	inst   uint32       // currently executing instruction
-	reg    [32]uint32   // registers
-	csr    [4096]uint32 // control and status register (probably don't need all of them, but eh)
-	fdirty bool         // floating-point register file dirty bit
-	freg   [32]uint64   // floating-point registers
-	pc     uint32       // program counter
-	rsets  *ReservationSets
-	mc     MemoryController
+	id      int
+	state   atomic.Value // can be HALTED, HALTING, or RUNNING
+	retired uint64       // number of instructions executed
+	inst    uint32       // currently executing instruction
+	reg     [32]uint32   // registers
+	csr     [4096]uint32 // control and status register (probably don't need all of them, but eh)
+	fdirty  bool         // floating-point register file dirty bit
+	freg    [32]uint64   // floating-point registers
+	pc      uint32       // program counter
+	rsets   *ReservationSets
+	mc      MemoryController
 }
 
 func (c *Core) fetch() uint32 {
@@ -179,7 +179,7 @@ func NewCore() (c Core) {
 func (c *Core) UnsafeStep() {
 	// TODO: Check for interrupts
 
-	c.retire += 1
+	c.retired += 1
 	inst := c.fetch()
 
 	// fmt.Printf("executing: %08X\n", inst)
@@ -192,10 +192,10 @@ func (c *Core) UnsafeStep() {
 
 func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int) (c Core) {
 	c = Core{
-		rsets:  rs,
-		id:     id,
-		retire: 0,
-		mc:     NewMemoryController(m),
+		rsets:   rs,
+		id:      id,
+		retired: 0,
+		mc:      NewMemoryController(m),
 	}
 
 	c.state.Store(HALTED)
@@ -206,7 +206,7 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 }
 
 func (c *Core) InstructionsRetired() uint64 {
-	return c.retire
+	return c.retired
 }
 
 func (c *Core) Misses() uint64 {
