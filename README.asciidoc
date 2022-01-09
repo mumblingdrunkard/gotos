@@ -53,7 +53,31 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 == Current state
 
 The `locktest` program shares a counter between four cores, all of them atomically incrementing the counter in a loop.
-At least one core is bound to end with the final result `1024 * 64 * 4 = 0x00040000` placed in register `[10]`.
+At least one core is bound to end with the final result `1024 * 1024 * 4 = 0x00400000` placed in register `[10]`.
+
+== Fun jobs that need doing
+
+- [ ] Fully define the system interface
+
+- [ ] Define a framework for the process labs
+
+- [ ] Define a framework for the memory labs
+
+- [ ] Define a framework for the file system lab
+
+- [ ] Write companion book for gotos
+
+- [ ] Write companion book for the labs
+
+== Dirty (un-fun) jobs that need doing
+
+- [ ] Unit testing all instructions thoroughly.
+
+- [ ] Integration testing all instructions thoroughly.
+
+- [ ] Testing instruction decoding.
+
+- [ ] Write thorough amount of tests for all labs to ensure students implementations are working.
 
 == Contributing
 
