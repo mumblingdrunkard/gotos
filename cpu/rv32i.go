@@ -499,12 +499,12 @@ func (c *Core) ecall(inst uint32) {
 		// sys_id
 		c.reg[10] = uint32(c.id)
 	} else {
-		c.state.Store(HALTING)
+		c.state.Store(STATE_HALTING)
 	}
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
 	// TODO no-op for now
-	c.state.Store(HALTING)
+	c.state.Store(STATE_HALTING)
 }

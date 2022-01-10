@@ -19,7 +19,7 @@ func main() {
 	binary.Read(f, binary.BigEndian, &fib)
 	f.Close()
 
-	mem := cpu.NewMemory(cpu.LITTLE) // little endian memory
+	mem := cpu.NewMemory(cpu.ENDIAN_LITTLE) // little endian memory
 	err, l := mem.Write(0, fib)
 	if err != nil {
 		panic(err)
