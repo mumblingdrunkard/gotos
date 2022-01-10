@@ -23,8 +23,8 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 - [ ] RV32I base instructions (38/40)
 - [*] RV32M extension (8/8)
 - [*] RV32A extension (11/11)
-- [ ] RV32F extension (0/26)
-- [ ] RV32D extension (0/26)
+- [*] RV32F extension (26/26) non-compliant
+- [*] RV32D extension (26/26) non-compliant
 - [ ] Zicsr extension (0/6)
 - [*] Zifencei extension (1/1)
 
