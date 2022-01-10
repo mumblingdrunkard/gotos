@@ -133,6 +133,32 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 	}
 }
 
+func (mc *MemoryController) LoadDoubleWord(address uint32) (error, uint64) {
+	mc.accesses++
+	err, address, flags := mc.mmu.Translate(address)
+
+	// ugly solution for now
+	if err != nil {
+		return err, 0
+	}
+
+	// Don't worry about flags for now
+	if flags&F_READ == 0 {
+	}
+
+	if hit, dw := mc.dCache.LoadDoubleWord(address); !hit {
+		mc.misses++
+		lineNumber := address >> CACHE_LINE_OFFSET_BITS
+		mc.mem.Lock()
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
+		mc.mem.Unlock()
+		_, dw := mc.dCache.LoadDoubleWord(address)
+		return nil, dw
+	} else {
+		return nil, dw
+	}
+}
+
 // Return the byte stored at
 func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 	mc.accesses++
@@ -204,6 +230,31 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		mc.dCache.StoreWord(address, w)
+	}
+
+	return nil
+}
+
+func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) error {
+	mc.accesses++
+	err, address, flags := mc.mmu.Translate(address)
+
+	// ugly solution for now
+	if err != nil {
+		return err
+	}
+
+	// Don't worry about flags for now
+	if flags&F_READ == 0 {
+	}
+
+	if hit := mc.dCache.StoreDoubleWord(address, dw); !hit {
+		mc.misses++
+		lineNumber := address >> CACHE_LINE_OFFSET_BITS
+		mc.mem.Lock()
+		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
+		mc.mem.Unlock()
+		mc.dCache.StoreDoubleWord(address, dw)
 	}
 
 	return nil

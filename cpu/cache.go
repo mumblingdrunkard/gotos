@@ -5,6 +5,8 @@ import (
 	"math/rand"
 )
 
+// TODO check alignments
+
 const (
 	CACHE_LINE_LENGTH      = 64
 	CACHE_LINE_OFFSET_BITS = 6
@@ -83,6 +85,23 @@ func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 	return false, 0
 }
 
+func (c *Cache) LoadDoubleWord(address uint32) (bool, uint64) {
+	lineNumber := address >> CACHE_LINE_OFFSET_BITS
+	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&CACHE_F_STALE != 0 {
+			return false, 0
+		}
+
+		offset := address & CACHE_LINE_OFFSET_MASK
+		if c.endian == ENDIAN_BIG {
+			return true, binary.BigEndian.Uint64(line.data[offset : offset+8])
+		} else {
+			return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
+		}
+	}
+	return false, 0
+}
+
 func (c *Cache) StoreByte(address uint32, b uint8) bool {
 	lineNumber := address >> CACHE_LINE_OFFSET_BITS
 	if line, present := c.lookup[lineNumber]; present {
@@ -113,7 +132,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 		} else {
 			binary.LittleEndian.PutUint16(bytes, hw)
 		}
-		copy(line.data[offset:offset+2], bytes)
+		copy(line.data[offset:], bytes)
 		line.flags |= CACHE_F_DIRTY
 		return true
 	}
@@ -134,7 +153,28 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 		} else {
 			binary.LittleEndian.PutUint32(bytes, w)
 		}
-		copy(line.data[offset:offset+4], bytes)
+		copy(line.data[offset:], bytes)
+		line.flags |= CACHE_F_DIRTY
+		return true
+	}
+	return false
+}
+
+func (c *Cache) StoreDoubleWord(address uint32, dw uint64) bool {
+	lineNumber := address >> CACHE_LINE_OFFSET_BITS
+	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&CACHE_F_STALE != 0 {
+			return false
+		}
+
+		offset := address & CACHE_LINE_OFFSET_MASK
+		bytes := make([]uint8, 4)
+		if c.endian == ENDIAN_BIG {
+			binary.BigEndian.PutUint64(bytes, dw)
+		} else {
+			binary.LittleEndian.PutUint64(bytes, dw)
+		}
+		copy(line.data[offset:], bytes)
 		line.flags |= CACHE_F_DIRTY
 		return true
 	}
@@ -155,7 +195,7 @@ func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
 		} else {
 			binary.LittleEndian.PutUint32(bytes, w)
 		}
-		copy(line.data[offset:offset+4], bytes)
+		copy(line.data[offset:], bytes)
 		return true
 	}
 	return false
@@ -165,11 +205,10 @@ func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	if _, present := c.lookup[lineNumber]; present {
 		line := c.lookup[lineNumber]
 
-		if line.flags&CACHE_F_STALE == 0 {
-			return false
+		if line.flags&CACHE_F_STALE == 0 { // if line isn't stale
+			return false // line is not updated
 		}
 
-		// TODO a stale copy of the line is present, refresh the data in that space
 		address := lineNumber << CACHE_LINE_OFFSET_BITS
 		copy(line.data[:], src[address:address+CACHE_LINE_LENGTH])
 		line.flags &= (CACHE_F_DIRTY ^ CACHE_F_STALE ^ CACHE_F_ALL) // remove stale and dirty bits
