@@ -14,7 +14,6 @@ const (
 	TRAP_SUPERVISOR_EXTERNAL_INTERRUPT                                = 9  // not used
 	TRAP_VIRTUAL_SUPERVISOR_EXTERNAL_INTERRUPT                        = 10 // not used
 	TRAP_MACHINE_EXTERNAL_INTERRUPT                                   = 11
-	TRAP_SUPERVISOR_GUEST_EXTERNAL_INTERRUPT                          = 12 // not used
 )
 
 // Exception codes when Interrupt is 0/false (see risc-v privileged spec table 8.6)
@@ -23,7 +22,7 @@ const (
 	TRAP_INSTRUCTION_ACCESS_FAULT                      = 1
 	TRAP_ILLEGAL_INSTRUCTION                           = 2
 	TRAP_BREAKPOINT                                    = 3
-	TRAP_LOAD_ADDRESS_MISALIGNED                       = 2
+	TRAP_LOAD_ADDRESS_MISALIGNED                       = 4
 	TRAP_LOAD_ACCESS_FAULT                             = 5
 	TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED               = 6
 	TRAP_STORE_OR_AMO_ACCESS_FAULT                     = 7
@@ -34,10 +33,6 @@ const (
 	TRAP_INSTRUCTION_PAGE_FAULT                        = 12
 	TRAP_LOAD_PAGE_FAULT                               = 13
 	TRAP_STORE_OR_AMO_PAGE_FAULT                       = 15
-	TRAP_INSTRUCTION_GUEST_PAGE_FAULT                  = 20
-	TRAP_LOAD_GUEST_PAGE_FAULT                         = 21
-	TRAP_VIRTUAL_INSTRUCTION                           = 22
-	TRAP_STORE_AMO_GUEST_PAGE_FAULT                    = 23
 )
 
 func (c *Core) trap(interrupt bool, icode InterruptExceptionCode, ecode ExceptionCode) {
