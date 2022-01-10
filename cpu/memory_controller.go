@@ -11,28 +11,32 @@ type MemoryController struct {
 	accesses uint64
 }
 
-func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uint32) {
+func (mc *MemoryController) LoadInstruction(address uint32) (bool, uint32) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	var inst uint32
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// TODO check errors and shit
-
-	// ugly solution for now
-	if err != nil {
-		return
+	if !valid { // address was invalid
+		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
+		return false, 0
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
-		// TODO check flags
+	if !present { // possible page fault
+		// TODO TRAP_INSTRUCTION_PAGE_FAULT
+		return false, 0
 	}
 
-	// check if address is misaligned
-	// this shuold _never_ happen
-	if address&0x3 != 0 {
-		panic("Instruction address misaligned!")
+	if flags&MEM_F_EXEC == 0 { // permissions
+		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
+		return false, 0
 	}
 
+	if address&0x3 != 0 { // address alignment
+		// TODO TRAP_INSTRUCTION_ADDRESS_MISALIGNED
+		return false, 0
+	}
+
+	// TODO Check if address is uncached
 	if hit, instruction := mc.iCache.LoadWord(address); !hit {
 		// fmt.Println("Cache miss!")
 		mc.misses++
@@ -48,24 +52,27 @@ func (mc *MemoryController) LoadInstruction(address uint32) (err error, inst uin
 		inst = instruction
 	}
 
-	// fmt.Printf("inst: %08X\n", inst)
-	return
+	return true, inst
 }
 
 // Return the byte stored at
-func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
+func (mc *MemoryController) LoadByte(address uint32) (bool, uint8) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err, 0
+	if !valid { // address was invalid
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_LOAD_PAGE_FAULT
+		return false, 0
 	}
 
-	if flags&F_NOCACHE != 0 {
+	if flags&MEM_F_READ == 0 { // permissions
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
 	if hit, b := mc.dCache.LoadByte(address); !hit {
@@ -75,23 +82,34 @@ func (mc *MemoryController) LoadByte(address uint32) (error, uint8) {
 		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, b := mc.dCache.LoadByte(address)
-		return nil, b
+		return true, b
 	} else {
-		return nil, b
+		return true, b
 	}
 }
 
-func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
+func (mc *MemoryController) LoadHalfWord(address uint32) (bool, uint16) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err, 0
+	if !valid { // address was invalid
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_LOAD_PAGE_FAULT
+		return false, 0
+	}
+
+	if flags&MEM_F_READ == 0 { // permissions
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
+	}
+
+	if address&0x1 != 0 { // address alignment
+		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
+		return false, 0
 	}
 
 	if hit, hw := mc.dCache.LoadHalfWord(address); !hit {
@@ -101,23 +119,34 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (error, uint16) {
 		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, hw := mc.dCache.LoadHalfWord(address)
-		return nil, hw
+		return true, hw
 	} else {
-		return nil, hw
+		return true, hw
 	}
 }
 
-func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
+func (mc *MemoryController) LoadWord(address uint32) (bool, uint32) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err, 0
+	if !valid { // address was invalid
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_LOAD_PAGE_FAULT
+		return false, 0
+	}
+
+	if flags&MEM_F_READ == 0 { // permissions
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
+	}
+
+	if address&0x3 != 0 { // address alignment
+		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
+		return false, 0
 	}
 
 	if hit, w := mc.dCache.LoadWord(address); !hit {
@@ -127,23 +156,34 @@ func (mc *MemoryController) LoadWord(address uint32) (error, uint32) {
 		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, w := mc.dCache.LoadWord(address)
-		return nil, w
+		return true, w
 	} else {
-		return nil, w
+		return true, w
 	}
 }
 
-func (mc *MemoryController) LoadDoubleWord(address uint32) (error, uint64) {
+func (mc *MemoryController) LoadDoubleWord(address uint32) (bool, uint64) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err, 0
+	if !valid { // address was invalid
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_LOAD_PAGE_FAULT
+		return false, 0
+	}
+
+	if flags&MEM_F_READ == 0 { // permissions
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
+	}
+
+	if address&0x7 != 0 { // address alignment
+		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
+		return false, 0
 	}
 
 	if hit, dw := mc.dCache.LoadDoubleWord(address); !hit {
@@ -153,24 +193,30 @@ func (mc *MemoryController) LoadDoubleWord(address uint32) (error, uint64) {
 		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
 		mc.mem.Unlock()
 		_, dw := mc.dCache.LoadDoubleWord(address)
-		return nil, dw
+		return true, dw
 	} else {
-		return nil, dw
+		return true, dw
 	}
 }
 
 // Return the byte stored at
-func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
+func (mc *MemoryController) StoreByte(address uint32, b uint8) bool {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err
+	if !valid { // address was invalid
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_STORE_OR_AMO_PAGE_FAULT
+		return false
+	}
+
+	if flags&MEM_F_WRITE == 0 { // permissions
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
 	if hit := mc.dCache.StoreByte(address, b); !hit {
@@ -182,20 +228,31 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) error {
 		mc.dCache.StoreByte(address, b)
 	}
 
-	return nil
+	return true
 }
 
-func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
+func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) bool {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err
+	if !valid { // address was invalid
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_STORE_OR_AMO_PAGE_FAULT
+		return false
+	}
+
+	if flags&MEM_F_WRITE == 0 { // permissions
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
+	}
+
+	if address&0x1 != 0 { // address alignment
+		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
+		return false
 	}
 
 	if hit := mc.dCache.StoreHalfWord(address, hw); !hit {
@@ -207,20 +264,31 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) error {
 		mc.dCache.StoreHalfWord(address, hw)
 	}
 
-	return nil
+	return false
 }
 
-func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
+func (mc *MemoryController) StoreWord(address uint32, w uint32) bool {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err
+	if !valid { // address was invalid
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_STORE_OR_AMO_PAGE_FAULT
+		return false
+	}
+
+	if flags&MEM_F_WRITE == 0 { // permissions
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
+	}
+
+	if address&0x3 != 0 { // address alignment
+		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
+		return false
 	}
 
 	if hit := mc.dCache.StoreWord(address, w); !hit {
@@ -232,20 +300,31 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) error {
 		mc.dCache.StoreWord(address, w)
 	}
 
-	return nil
+	return true
 }
 
-func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) error {
+func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) bool {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err
+	if !valid { // address was invalid
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_STORE_OR_AMO_PAGE_FAULT
+		return false
+	}
+
+	if flags&MEM_F_WRITE == 0 { // permissions
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
+	}
+
+	if address&0x7 != 0 { // address alignment
+		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
+		return false
 	}
 
 	if hit := mc.dCache.StoreDoubleWord(address, dw); !hit {
@@ -257,20 +336,32 @@ func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) error {
 		mc.dCache.StoreDoubleWord(address, dw)
 	}
 
-	return nil
+	return true
 }
 
-func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32) {
+// Loads a memory straight from memory, bypassing the cache.
+func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (bool, uint32) {
 	mc.accesses++
-	err, address, flags := mc.mmu.Translate(address)
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	// ugly solution for now
-	if err != nil {
-		return err, 0
+	if !valid { // address was invalid
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
 	}
 
-	// Don't worry about flags for now
-	if flags&F_READ == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_LOAD_PAGE_FAULT
+		return false, 0
+	}
+
+	if flags&MEM_F_READ == 0 { // permissions
+		// TODO TRAP_LOAD_ACCESS_FAULT
+		return false, 0
+	}
+
+	if address&0x3 != 0 { // address alignment
+		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
+		return false, 0
 	}
 
 	var value uint32
@@ -284,19 +375,32 @@ func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (error, uint32
 	// should the entire cache line just be invalidated instead perhaps?
 	mc.dCache.StoreWordNoDirty(address, value)
 
-	return nil, value
+	return true, value
 }
 
-func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) error {
+// Stores a word straight to memory, bypassing cache.
+func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) bool {
 	mc.accesses++
+	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
 
-	err, address, flags := mc.mmu.Translate(address)
-
-	if err != nil {
-		return err
+	if !valid { // address was invalid
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
 	}
 
-	if flags&F_WRITE == 0 {
+	if !present { // possible page fault
+		// TODO TRAP_STORE_OR_AMO_PAGE_FAULT
+		return false
+	}
+
+	if flags&MEM_F_WRITE == 0 { // permissions
+		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
+		return false
+	}
+
+	if address&0x3 != 0 { // address alignment
+		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
+		return false
 	}
 
 	var bytes [4]uint8
@@ -312,24 +416,27 @@ func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) err
 	// also update cache
 	mc.dCache.StoreWordNoDirty(address, w) // May be uncached, ignore
 
-	return nil
+	return true
 }
 
+// Flushes the data cache to memory
 func (mc *MemoryController) FlushCache() {
-	// Flush data cache
 	mc.mem.Lock()
 	mc.dCache.FlushAll(mc.mem.data[:])
 	mc.mem.Unlock()
 }
 
+// Invalidates the data cache
 func (mc *MemoryController) InvalidateCache() {
 	mc.dCache.InvalidateAll()
 }
 
+// Invalidates the instruction cache
 func (mc *MemoryController) InvalidateInstructionCache() {
 	mc.iCache.InvalidateAll()
 }
 
+// Flush and invalidate the data cache
 func (mc *MemoryController) FlushAndInvalidateCache() {
 	mc.FlushCache()
 	mc.InvalidateCache()

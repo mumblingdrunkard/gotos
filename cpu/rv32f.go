@@ -61,11 +61,11 @@ func (c *Core) flw(inst uint32) {
 
 	address := c.reg[rs1] + imm11_0
 
-	err, word := c.mc.LoadWord(address)
+	success, word := c.mc.LoadWord(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("Failed")
 	}
 
 	c.freg[rd] = 0xFFFFFFFF00000000 | uint64(word)
@@ -81,11 +81,11 @@ func (c *Core) fsw(inst uint32) {
 
 	address := c.reg[rs1] + offset
 
-	err := c.mc.StoreWord(address, uint32(c.freg[rs2]))
+	success := c.mc.StoreWord(address, uint32(c.freg[rs2]))
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("Failed")
 	}
 }
 

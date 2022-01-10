@@ -90,10 +90,10 @@ type Core struct {
 }
 
 func (c *Core) fetch() uint32 {
-	err, inst := c.mc.LoadInstruction(c.pc)
+	success, inst := c.mc.LoadInstruction(c.pc)
 
-	if err != nil {
-		panic(err)
+	if !success {
+		panic("Failed to load instruction")
 	}
 
 	return inst

@@ -14,10 +14,10 @@ func (c *Core) fld(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	imm11_0 := uint32(int32(inst) >> 20)
 
-	err, val := c.mc.LoadDoubleWord(c.reg[rs1] + imm11_0)
+	success, val := c.mc.LoadDoubleWord(c.reg[rs1] + imm11_0)
 
-	if err != nil {
-		panic(err)
+	if !success {
+		panic("Failed")
 	}
 
 	c.freg[rd] = val
@@ -32,10 +32,10 @@ func (c *Core) fsd(inst uint32) {
 
 	addr := c.reg[rs1] + ((imm11_5 << 5) | imm4_0)
 
-	err := c.mc.StoreDoubleWord(addr, c.freg[rs2])
+	success := c.mc.StoreDoubleWord(addr, c.freg[rs2])
 
-	if err != nil {
-		panic(err)
+	if !success {
+		panic("Failed")
 	}
 }
 

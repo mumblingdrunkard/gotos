@@ -322,11 +322,11 @@ func (c *Core) lb(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	err, b := c.mc.LoadByte(address)
+	success, b := c.mc.LoadByte(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("LB failed")
 	}
 
 	signed := int8(b)
@@ -342,11 +342,11 @@ func (c *Core) lh(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	err, hw := c.mc.LoadHalfWord(address)
+	success, hw := c.mc.LoadHalfWord(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("LH failed")
 	}
 
 	signed := int16(hw)
@@ -362,11 +362,11 @@ func (c *Core) lw(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	err, w := c.mc.LoadWord(address)
+	success, w := c.mc.LoadWord(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("LW failed")
 	}
 
 	c.reg[rd] = w
@@ -379,11 +379,11 @@ func (c *Core) lbu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	err, b := c.mc.LoadByte(address)
+	success, b := c.mc.LoadByte(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("LBU failed")
 	}
 
 	c.reg[rd] = uint32(b)
@@ -396,11 +396,11 @@ func (c *Core) lhu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	err, hw := c.mc.LoadHalfWord(address)
+	success, hw := c.mc.LoadHalfWord(address)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("LHU failed")
 	}
 
 	c.reg[rd] = uint32(hw)
@@ -417,11 +417,11 @@ func (c *Core) sb(inst uint32) {
 	address := offset + c.reg[rs1]
 	b := uint8(c.reg[rs2] & 0xff)
 
-	err := c.mc.StoreByte(address, b)
+	success := c.mc.StoreByte(address, b)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("SB failed")
 	}
 }
 
@@ -436,11 +436,11 @@ func (c *Core) sh(inst uint32) {
 	address := offset + c.reg[rs1]
 	hw := uint16(c.reg[rs2] & 0xffff)
 
-	err := c.mc.StoreHalfWord(address, hw)
+	success := c.mc.StoreHalfWord(address, hw)
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("SH failed")
 	}
 }
 
@@ -454,11 +454,11 @@ func (c *Core) sw(inst uint32) {
 
 	address := offset + c.reg[rs1]
 
-	err := c.mc.StoreWord(address, c.reg[rs2])
+	success := c.mc.StoreWord(address, c.reg[rs2])
 
-	if err != nil {
+	if !success {
 		c.DumpRegisters()
-		panic(err)
+		panic("SW failed")
 	}
 }
 
@@ -494,7 +494,8 @@ func (c *Core) fence(inst uint32) {
 
 // environment call
 func (c *Core) ecall(inst uint32) {
-	// TODO just halts for now
+	c.trap(false, 0, TRAP_ECALL_UMODE)
+
 	if c.reg[17] == 2 {
 		// sys_id
 		c.reg[10] = uint32(c.id)
