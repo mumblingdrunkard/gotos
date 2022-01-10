@@ -76,25 +76,127 @@ const (
 )
 
 func (c *Core) csrrw(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	rs1 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	// Don't need to check rd for 0
+	// We just reset the zero register to 0 in the next instruction anyway
+
+	// Check permissions
+	if (csr&0xC00 != 0) && (csr&0xC00 != 0xC00) { // verify read and write permissions
+		old := c.csr[csr]
+		c.csr[csr] = c.reg[rs1]
+		c.reg[rd] = old
+	} else {
+		// illegal instruction?
+		panic("Illegal instruction (tried to access csr that was not user mode)")
+	}
 }
 
 func (c *Core) csrrs(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	rs1 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	if csr&0xC00 != 0 { // check if user mode register
+		panic("Illegal access")
+	}
+
+	if rs1 != REG_ZERO {
+		if csr&0xC00 != 0xC00 { // verify read and write permissions
+			old := c.csr[csr]
+			c.csr[csr] |= c.reg[rs1]
+			c.reg[rd] = old
+		} else {
+			panic("Illegal instruction (tried to access csr that was not user mode)")
+		}
+	} else { // don't write csr, just read
+		c.reg[rd] = c.csr[csr]
+	}
 }
 
 func (c *Core) csrrc(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	rs1 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	if csr&0xC00 != 0 { // check if user mode register
+		panic("Illegal access")
+	}
+
+	if rs1 != REG_ZERO {
+		if csr&0xC00 != 0xC00 { // verify read and write permissions
+			old := c.csr[csr]
+			c.csr[csr] &= (c.reg[rs1] ^ 0xFFFFFFFF) // AND with inverse of bit-pattern to unset select bits
+			c.reg[rd] = old
+		} else {
+			panic("Illegal instruction (tried to access csr that was not user mode)")
+		}
+	} else { // don't write csr, just read
+		c.reg[rd] = c.csr[csr]
+	}
 }
 
 func (c *Core) csrrwi(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	imm4_0 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	// Don't need to check rd for 0
+	// We just reset the zero register to 0 in the next instruction anyway
+
+	// Check permissions
+	if (csr&0xC00 != 0) && (csr&0xC00 != 0xC00) { // verify read and write permissions
+		old := c.csr[csr]
+		c.csr[csr] = imm4_0
+		c.reg[rd] = old
+	} else {
+		// illegal instruction?
+		panic("Illegal instruction (tried to access csr that was not user mode)")
+	}
 }
 
 func (c *Core) csrrsi(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	imm4_0 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	if csr&0xC00 != 0 { // check if user mode register
+		panic("Illegal access")
+	}
+
+	if imm4_0 != 0 {
+		if csr&0xC00 != 0xC00 { // verify read and write permissions
+			old := c.csr[csr]
+			c.csr[csr] |= imm4_0
+			c.reg[rd] = old
+		} else {
+			panic("Illegal instruction (tried to access csr that was not user mode)")
+		}
+	} else { // don't write csr, just read
+		c.reg[rd] = c.csr[csr]
+	}
 }
 
 func (c *Core) csrrci(inst uint32) {
-	// TODO
+	rd := (inst >> 7) & 0x1f
+	imm4_0 := (inst >> 15) & 0x1f
+	csr := (inst >> 20) & 0xfff
+
+	if csr&0xC00 != 0 { // check if user mode register
+		panic("Illegal access")
+	}
+
+	if imm4_0 != 0 {
+		if csr&0xC00 != 0xC00 { // verify read and write permissions
+			old := c.csr[csr]
+			c.csr[csr] &= (imm4_0 ^ 0xFFFFFFFF) // AND with inverse of bit-pattern to unset select bits
+			c.reg[rd] = old
+		} else {
+			panic("Illegal instruction (tried to access csr that was not user mode)")
+		}
+	} else { // don't write csr, just read
+		c.reg[rd] = c.csr[csr]
+	}
 }
