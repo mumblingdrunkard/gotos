@@ -8,11 +8,10 @@ int main() {
     struct mutex *m = (struct mutex *)4096;
     int *ct = (int *)2048;
 
-    for (int i = 0; i < 1024 * 1024; i++) {
-        //   lock(m);
-        //   (*ct)++;
-        //   unlock(m);
-        atomic_add(ct, 1);
+    for (int i = 0; i < 1024 * 16; i++) {
+        lock(m);
+        (*ct)++;
+        unlock(m);
     }
 
     lock(m);

@@ -53,7 +53,16 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 == Current state
 
 The `locktest` program shares a counter between four cores, all of them atomically incrementing the counter in a loop.
-At least one core is bound to end with the final result `1024 * 1024 * 4 = 0x00400000` placed in register `[10]`.
+This is achieved by a core acquiring a shared mutex, updating the value, then releasing the mutex.
+Upon acquiring a mutex, the cache needs to be invalidated in case shared data is updated.
+Upon releasing the mutex, the cache needs to be flushed so that other cores can fetch this new data.
+This nicely illustrates the idea that behaviour in C can be undefined when shared data is not properly handled.
+At least one core is bound to end with the final result `1024 * 16 * 4 = 0x00010000` placed in register `[10]`.
+
+On my 4-core i7 1065G7, this program takes slightly more than 1 whole second to run.
+That's pretty slow for a measly 65000 lock/unlock operations.
+A better approach would be to use atomic operations as much as possible.
+RISC-V has multiple atomic operations, check out the A extension in the RISC-V spec for more info.
 
 == Fun jobs that need doing
 
