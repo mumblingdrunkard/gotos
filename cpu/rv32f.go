@@ -61,7 +61,7 @@ func (c *Core) flw(inst uint32) {
 
 	address := c.reg[rs1] + imm11_0
 
-	success, word := c.mc.LoadWord(address)
+	success, word := c.LoadWord(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -81,7 +81,7 @@ func (c *Core) fsw(inst uint32) {
 
 	address := c.reg[rs1] + offset
 
-	success := c.mc.StoreWord(address, uint32(c.freg[rs2]))
+	success := c.StoreWord(address, uint32(c.freg[rs2]))
 
 	if !success {
 		c.DumpRegisters()

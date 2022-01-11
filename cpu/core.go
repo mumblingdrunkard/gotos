@@ -54,26 +54,6 @@ const (
 	ENDIAN_BIG           = 1
 )
 
-type ReservationSets struct {
-	sync.Mutex
-	sets   []map[uint32]bool
-	lookup []*map[uint32]bool
-}
-
-func NewReservationSets(n int) (rs ReservationSets) {
-	rs = ReservationSets{
-		sets:   make([]map[uint32]bool, n),
-		lookup: make([]*map[uint32]bool, n),
-	}
-
-	for i := 0; i < n; i++ {
-		rs.sets[i] = make(map[uint32]bool)
-		rs.lookup[i] = &rs.sets[i]
-	}
-
-	return
-}
-
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
@@ -85,12 +65,11 @@ type Core struct {
 	fdirty  bool         // fp register file dirty bit
 	freg    [32]uint64   // fp registers
 	pc      uint32       // program counter
-	rsets   *ReservationSets
 	mc      MemoryController
 }
 
 func (c *Core) fetch() uint32 {
-	success, inst := c.mc.LoadInstruction(c.pc)
+	success, inst := c.LoadInstruction(c.pc)
 
 	if !success {
 		panic("Failed to load instruction")
@@ -228,10 +207,9 @@ func (c *Core) UnsafeStep() {
 
 func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int) (c Core) {
 	c = Core{
-		rsets:   rs,
 		id:      id,
 		retired: 0,
-		mc:      NewMemoryController(m),
+		mc:      NewMemoryController(m, rs),
 	}
 
 	c.state.Store(STATE_HALTED)

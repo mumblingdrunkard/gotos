@@ -1,20 +1,35 @@
 package cpu
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 type MemoryController struct {
 	iCache   Cache
 	dCache   Cache
-	mem      *Memory
+	mem      *Memory          // RAM (possibly shared)
+	rsets    *ReservationSets // Reservation sets (possibly shared)
 	mmu      MMU
 	misses   uint64
 	accesses uint64
 }
 
-func (mc *MemoryController) LoadInstruction(address uint32) (bool, uint32) {
-	mc.accesses++
+func NewMemoryController(m *Memory, rs *ReservationSets) MemoryController {
+	return MemoryController{
+		dCache: NewCache(m.endian),
+		iCache: NewCache(m.endian),
+		rsets:  rs,
+		mem:    m,
+		mmu:    NewMMU(),
+	}
+}
+
+// Attempts to load a 4 byte instruction stored at virtual address `vAddr`.
+// If successful, returns `true, <instruction>`, `false, 0` otherwise.
+func (c *Core) LoadInstruction(vAddr uint32) (bool, uint32) {
+	c.mc.accesses++
 	var inst uint32
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
@@ -26,27 +41,23 @@ func (mc *MemoryController) LoadInstruction(address uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&MEM_F_EXEC == 0 { // permissions
+	if flags&MEM_F_EXEC == 0 { // physical address is not marked executable
 		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
 		return false, 0
 	}
 
-	if address&0x3 != 0 { // address alignment
+	if pAddr&0x3 != 0 { // address alignment
 		// TODO TRAP_INSTRUCTION_ADDRESS_MISALIGNED
 		return false, 0
 	}
 
-	// TODO Check if address is uncached
-	if hit, instruction := mc.iCache.LoadWord(address); !hit {
-		// fmt.Println("Cache miss!")
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		// fmt.Printf("Loading line #%04X\n", lineNumber)
-		mc.mem.Lock()
-		mc.iCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		// fmt.Printf("Loaded line #%04X\n", lineNumber)
-		_, instruction := mc.iCache.LoadWord(address)
+	if hit, instruction := c.mc.iCache.LoadWord(pAddr); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.iCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		_, instruction := c.mc.iCache.LoadWord(pAddr)
 		inst = instruction
 	} else {
 		inst = instruction
@@ -56,9 +67,9 @@ func (mc *MemoryController) LoadInstruction(address uint32) (bool, uint32) {
 }
 
 // Return the byte stored at
-func (mc *MemoryController) LoadByte(address uint32) (bool, uint8) {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) LoadByte(vAddr uint32) (bool, uint8) {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -75,22 +86,22 @@ func (mc *MemoryController) LoadByte(address uint32) (bool, uint8) {
 		return false, 0
 	}
 
-	if hit, b := mc.dCache.LoadByte(address); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		_, b := mc.dCache.LoadByte(address)
+	if hit, b := c.mc.dCache.LoadByte(pAddr); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		_, b := c.mc.dCache.LoadByte(pAddr)
 		return true, b
 	} else {
 		return true, b
 	}
 }
 
-func (mc *MemoryController) LoadHalfWord(address uint32) (bool, uint16) {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) LoadHalfWord(vAddr uint32) (bool, uint16) {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -107,27 +118,27 @@ func (mc *MemoryController) LoadHalfWord(address uint32) (bool, uint16) {
 		return false, 0
 	}
 
-	if address&0x1 != 0 { // address alignment
+	if pAddr&0x1 != 0 { // address alignment
 		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
 		return false, 0
 	}
 
-	if hit, hw := mc.dCache.LoadHalfWord(address); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		_, hw := mc.dCache.LoadHalfWord(address)
+	if hit, hw := c.mc.dCache.LoadHalfWord(pAddr); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		_, hw := c.mc.dCache.LoadHalfWord(pAddr)
 		return true, hw
 	} else {
 		return true, hw
 	}
 }
 
-func (mc *MemoryController) LoadWord(address uint32) (bool, uint32) {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) LoadWord(vAddr uint32) (bool, uint32) {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -144,27 +155,27 @@ func (mc *MemoryController) LoadWord(address uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if address&0x3 != 0 { // address alignment
+	if pAddr&0x3 != 0 { // address alignment
 		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
 		return false, 0
 	}
 
-	if hit, w := mc.dCache.LoadWord(address); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		_, w := mc.dCache.LoadWord(address)
+	if hit, w := c.mc.dCache.LoadWord(pAddr); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		_, w := c.mc.dCache.LoadWord(pAddr)
 		return true, w
 	} else {
 		return true, w
 	}
 }
 
-func (mc *MemoryController) LoadDoubleWord(address uint32) (bool, uint64) {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) LoadDoubleWord(vAddr uint32) (bool, uint64) {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -181,18 +192,18 @@ func (mc *MemoryController) LoadDoubleWord(address uint32) (bool, uint64) {
 		return false, 0
 	}
 
-	if address&0x7 != 0 { // address alignment
+	if pAddr&0x7 != 0 { // address alignment
 		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
 		return false, 0
 	}
 
-	if hit, dw := mc.dCache.LoadDoubleWord(address); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		_, dw := mc.dCache.LoadDoubleWord(address)
+	if hit, dw := c.mc.dCache.LoadDoubleWord(pAddr); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		_, dw := c.mc.dCache.LoadDoubleWord(pAddr)
 		return true, dw
 	} else {
 		return true, dw
@@ -200,9 +211,9 @@ func (mc *MemoryController) LoadDoubleWord(address uint32) (bool, uint64) {
 }
 
 // Return the byte stored at
-func (mc *MemoryController) StoreByte(address uint32, b uint8) bool {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) StoreByte(vAddr uint32, b uint8) bool {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -219,21 +230,21 @@ func (mc *MemoryController) StoreByte(address uint32, b uint8) bool {
 		return false
 	}
 
-	if hit := mc.dCache.StoreByte(address, b); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		mc.dCache.StoreByte(address, b)
+	if hit := c.mc.dCache.StoreByte(pAddr, b); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		c.mc.dCache.StoreByte(pAddr, b)
 	}
 
 	return true
 }
 
-func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) bool {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) StoreHalfWord(vAddr uint32, hw uint16) bool {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -250,26 +261,26 @@ func (mc *MemoryController) StoreHalfWord(address uint32, hw uint16) bool {
 		return false
 	}
 
-	if address&0x1 != 0 { // address alignment
+	if pAddr&0x1 != 0 { // address alignment
 		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
 		return false
 	}
 
-	if hit := mc.dCache.StoreHalfWord(address, hw); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		mc.dCache.StoreHalfWord(address, hw)
+	if hit := c.mc.dCache.StoreHalfWord(pAddr, hw); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		c.mc.dCache.StoreHalfWord(pAddr, hw)
 	}
 
 	return false
 }
 
-func (mc *MemoryController) StoreWord(address uint32, w uint32) bool {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) StoreWord(vAddr uint32, w uint32) bool {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -286,26 +297,26 @@ func (mc *MemoryController) StoreWord(address uint32, w uint32) bool {
 		return false
 	}
 
-	if address&0x3 != 0 { // address alignment
+	if pAddr&0x3 != 0 { // address alignment
 		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
 		return false
 	}
 
-	if hit := mc.dCache.StoreWord(address, w); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		mc.dCache.StoreWord(address, w)
+	if hit := c.mc.dCache.StoreWord(pAddr, w); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		c.mc.dCache.StoreWord(pAddr, w)
 	}
 
 	return true
 }
 
-func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) bool {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) StoreDoubleWord(vAddr uint32, dw uint64) bool {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -322,27 +333,27 @@ func (mc *MemoryController) StoreDoubleWord(address uint32, dw uint64) bool {
 		return false
 	}
 
-	if address&0x7 != 0 { // address alignment
+	if pAddr&0x7 != 0 { // address alignment
 		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
 		return false
 	}
 
-	if hit := mc.dCache.StoreDoubleWord(address, dw); !hit {
-		mc.misses++
-		lineNumber := address >> CACHE_LINE_OFFSET_BITS
-		mc.mem.Lock()
-		mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, mc.mem.data[:])
-		mc.mem.Unlock()
-		mc.dCache.StoreDoubleWord(address, dw)
+	if hit := c.mc.dCache.StoreDoubleWord(pAddr, dw); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		c.mc.mem.Lock()
+		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.mem.Unlock()
+		c.mc.dCache.StoreDoubleWord(pAddr, dw)
 	}
 
 	return true
 }
 
 // Loads a memory straight from memory, bypassing the cache.
-func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (bool, uint32) {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) UnsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -359,29 +370,29 @@ func (mc *MemoryController) UnsafeLoadThroughWord(address uint32) (bool, uint32)
 		return false, 0
 	}
 
-	if address&0x3 != 0 { // address alignment
+	if pAddr&0x3 != 0 { // address alignment
 		// TODO TRAP_LOAD_ADDRESS_MISALIGNED
 		return false, 0
 	}
 
 	var value uint32
-	if mc.mem.endian == ENDIAN_BIG {
-		value = binary.BigEndian.Uint32(mc.mem.data[address : address+4])
+	if c.mc.mem.endian == ENDIAN_BIG {
+		value = binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
 	} else {
-		value = binary.LittleEndian.Uint32(mc.mem.data[address : address+4])
+		value = binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
 	}
 	// TODO: Verify the integrity of this
 	// store loaded value into cache if it's cached
 	// should the entire cache line just be invalidated instead perhaps?
-	mc.dCache.StoreWordNoDirty(address, value)
+	c.mc.dCache.StoreWordNoDirty(pAddr, value)
 
 	return true, value
 }
 
 // Stores a word straight to memory, bypassing cache.
-func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) bool {
-	mc.accesses++
-	valid, present, address, flags := mc.mmu.TranslateAndCheck(address)
+func (c *Core) UnsafeStoreThroughWord(vAddr uint32, w uint32) bool {
+	c.mc.accesses++
+	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -398,55 +409,46 @@ func (mc *MemoryController) UnsafeStoreThroughWord(address uint32, w uint32) boo
 		return false
 	}
 
-	if address&0x3 != 0 { // address alignment
+	if pAddr&0x3 != 0 { // address alignment
 		// TODO TRAP_STORE_OR_AMO_ADDRESS_MISALIGNED
 		return false
 	}
 
 	var bytes [4]uint8
 
-	if mc.mem.endian == ENDIAN_BIG {
+	if c.mc.mem.endian == ENDIAN_BIG {
 		binary.BigEndian.PutUint32(bytes[:], w)
 	} else {
 		binary.LittleEndian.PutUint32(bytes[:], w)
 	}
 
-	copy(mc.mem.data[address:], bytes[:])
+	copy(c.mc.mem.data[pAddr:], bytes[:])
 
 	// also update cache
-	mc.dCache.StoreWordNoDirty(address, w) // May be uncached, ignore
+	c.mc.dCache.StoreWordNoDirty(pAddr, w) // May be uncached, ignore
 
 	return true
 }
 
 // Flushes the data cache to memory
-func (mc *MemoryController) FlushCache() {
-	mc.mem.Lock()
-	mc.dCache.FlushAll(mc.mem.data[:])
-	mc.mem.Unlock()
+func (c *Core) FlushCache() {
+	c.mc.mem.Lock()
+	c.mc.dCache.FlushAll(c.mc.mem.data[:])
+	c.mc.mem.Unlock()
 }
 
 // Invalidates the data cache
-func (mc *MemoryController) InvalidateCache() {
-	mc.dCache.InvalidateAll()
+func (c *Core) InvalidateCache() {
+	c.mc.dCache.InvalidateAll()
 }
 
 // Invalidates the instruction cache
-func (mc *MemoryController) InvalidateInstructionCache() {
-	mc.iCache.InvalidateAll()
+func (c *Core) InvalidateInstructionCache() {
+	c.mc.iCache.InvalidateAll()
 }
 
 // Flush and invalidate the data cache
-func (mc *MemoryController) FlushAndInvalidateCache() {
-	mc.FlushCache()
-	mc.InvalidateCache()
-}
-
-func NewMemoryController(m *Memory) MemoryController {
-	return MemoryController{
-		dCache: NewCache(m.endian),
-		iCache: NewCache(m.endian),
-		mem:    m,
-		mmu:    NewMMU(),
-	}
+func (c *Core) FlushAndInvalidateCache() {
+	c.FlushCache()
+	c.InvalidateCache()
 }
