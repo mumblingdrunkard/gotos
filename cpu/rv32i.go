@@ -322,7 +322,7 @@ func (c *Core) lb(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, b := c.LoadByte(address)
+	success, b := c.loadByte(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -342,7 +342,7 @@ func (c *Core) lh(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, hw := c.LoadHalfWord(address)
+	success, hw := c.loadHalfWord(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -362,7 +362,7 @@ func (c *Core) lw(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, w := c.LoadWord(address)
+	success, w := c.loadWord(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -379,7 +379,7 @@ func (c *Core) lbu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, b := c.LoadByte(address)
+	success, b := c.loadByte(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -396,7 +396,7 @@ func (c *Core) lhu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, hw := c.LoadHalfWord(address)
+	success, hw := c.loadHalfWord(address)
 
 	if !success {
 		c.DumpRegisters()
@@ -417,7 +417,7 @@ func (c *Core) sb(inst uint32) {
 	address := offset + c.reg[rs1]
 	b := uint8(c.reg[rs2] & 0xff)
 
-	success := c.StoreByte(address, b)
+	success := c.storeByte(address, b)
 
 	if !success {
 		c.DumpRegisters()
@@ -436,7 +436,7 @@ func (c *Core) sh(inst uint32) {
 	address := offset + c.reg[rs1]
 	hw := uint16(c.reg[rs2] & 0xffff)
 
-	success := c.StoreHalfWord(address, hw)
+	success := c.storeHalfWord(address, hw)
 
 	if !success {
 		c.DumpRegisters()
@@ -454,7 +454,7 @@ func (c *Core) sw(inst uint32) {
 
 	address := offset + c.reg[rs1]
 
-	success := c.StoreWord(address, c.reg[rs2])
+	success := c.storeWord(address, c.reg[rs2])
 
 	if !success {
 		c.DumpRegisters()
@@ -466,7 +466,7 @@ func (c *Core) sw(inst uint32) {
 func (c *Core) fence(inst uint32) {
 	// I think this should flush the cache?
 	// Will need some input from an expert or something.
-	c.FlushAndInvalidateCache()
+	c.flushAndInvalidateCache()
 
 	// This ensures no memory operations from this hart can be observed before any memory operation that comes after the FENCE.
 

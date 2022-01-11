@@ -69,7 +69,7 @@ type Core struct {
 }
 
 func (c *Core) fetch() uint32 {
-	success, inst := c.LoadInstruction(c.pc)
+	success, inst := c.loadInstruction(c.pc)
 
 	if !success {
 		panic("Failed to load instruction")

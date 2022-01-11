@@ -26,7 +26,7 @@ func NewMemoryController(m *Memory, rs *ReservationSets) MemoryController {
 
 // Attempts to load a 4 byte instruction stored at virtual address `vAddr`.
 // If successful, returns `true, <instruction>`, `false, 0` otherwise.
-func (c *Core) LoadInstruction(vAddr uint32) (bool, uint32) {
+func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	var inst uint32
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
@@ -67,7 +67,7 @@ func (c *Core) LoadInstruction(vAddr uint32) (bool, uint32) {
 }
 
 // Return the byte stored at
-func (c *Core) LoadByte(vAddr uint32) (bool, uint8) {
+func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -99,7 +99,7 @@ func (c *Core) LoadByte(vAddr uint32) (bool, uint8) {
 	}
 }
 
-func (c *Core) LoadHalfWord(vAddr uint32) (bool, uint16) {
+func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -136,7 +136,7 @@ func (c *Core) LoadHalfWord(vAddr uint32) (bool, uint16) {
 	}
 }
 
-func (c *Core) LoadWord(vAddr uint32) (bool, uint32) {
+func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -173,7 +173,7 @@ func (c *Core) LoadWord(vAddr uint32) (bool, uint32) {
 	}
 }
 
-func (c *Core) LoadDoubleWord(vAddr uint32) (bool, uint64) {
+func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -211,7 +211,7 @@ func (c *Core) LoadDoubleWord(vAddr uint32) (bool, uint64) {
 }
 
 // Return the byte stored at
-func (c *Core) StoreByte(vAddr uint32, b uint8) bool {
+func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -242,7 +242,7 @@ func (c *Core) StoreByte(vAddr uint32, b uint8) bool {
 	return true
 }
 
-func (c *Core) StoreHalfWord(vAddr uint32, hw uint16) bool {
+func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -278,7 +278,7 @@ func (c *Core) StoreHalfWord(vAddr uint32, hw uint16) bool {
 	return false
 }
 
-func (c *Core) StoreWord(vAddr uint32, w uint32) bool {
+func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -314,7 +314,7 @@ func (c *Core) StoreWord(vAddr uint32, w uint32) bool {
 	return true
 }
 
-func (c *Core) StoreDoubleWord(vAddr uint32, dw uint64) bool {
+func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -351,7 +351,7 @@ func (c *Core) StoreDoubleWord(vAddr uint32, dw uint64) bool {
 }
 
 // Loads a memory straight from memory, bypassing the cache.
-func (c *Core) UnsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
+func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -390,7 +390,7 @@ func (c *Core) UnsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 }
 
 // Stores a word straight to memory, bypassing cache.
-func (c *Core) UnsafeStoreThroughWord(vAddr uint32, w uint32) bool {
+func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
 	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
 
@@ -431,24 +431,24 @@ func (c *Core) UnsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 }
 
 // Flushes the data cache to memory
-func (c *Core) FlushCache() {
+func (c *Core) flushCache() {
 	c.mc.mem.Lock()
 	c.mc.dCache.FlushAll(c.mc.mem.data[:])
 	c.mc.mem.Unlock()
 }
 
 // Invalidates the data cache
-func (c *Core) InvalidateCache() {
+func (c *Core) invalidateCache() {
 	c.mc.dCache.InvalidateAll()
 }
 
 // Invalidates the instruction cache
-func (c *Core) InvalidateInstructionCache() {
+func (c *Core) invalidateInstructionCache() {
 	c.mc.iCache.InvalidateAll()
 }
 
 // Flush and invalidate the data cache
-func (c *Core) FlushAndInvalidateCache() {
-	c.FlushCache()
-	c.InvalidateCache()
+func (c *Core) flushAndInvalidateCache() {
+	c.flushCache()
+	c.invalidateCache()
 }

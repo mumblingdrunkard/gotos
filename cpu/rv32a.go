@@ -48,7 +48,7 @@ func (c *Core) lr_w(inst uint32) {
 	// update rset
 	c.mc.rsets.Lock()
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
 	c.mc.mem.Unlock()
 	m := c.mc.rsets.lookup[c.id]
 	(*m)[pAddr] = true
@@ -70,7 +70,7 @@ func (c *Core) sc_w(inst uint32) {
 	if _, ok := (*c.mc.rsets.lookup[c.id])[pAddr]; ok {
 		fmt.Println("SC.W success!")
 		c.mc.mem.Lock()
-		c.UnsafeStoreThroughWord(addr, c.reg[rs2])
+		c.unsafeStoreThroughWord(addr, c.reg[rs2])
 		c.mc.mem.Unlock()
 
 		// invalidate entries on all harts
@@ -99,8 +99,8 @@ func (c *Core) amoswap_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, src)
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, src)
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -121,8 +121,8 @@ func (c *Core) amoadd_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, src+c.reg[rd])
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, src+c.reg[rd])
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -143,8 +143,8 @@ func (c *Core) amoand_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, src&c.reg[rd])
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, src&c.reg[rd])
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -165,8 +165,8 @@ func (c *Core) amoor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, src|c.reg[rd])
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, src|c.reg[rd])
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -187,8 +187,8 @@ func (c *Core) amoxor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, src^c.reg[rd])
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, src^c.reg[rd])
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -209,8 +209,8 @@ func (c *Core) amomax_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, uint32(max(int32(src), int32(c.reg[rd]))))
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, uint32(max(int32(src), int32(c.reg[rd]))))
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -231,8 +231,8 @@ func (c *Core) amomaxu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, maxu(src, c.reg[rd]))
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, maxu(src, c.reg[rd]))
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -253,8 +253,8 @@ func (c *Core) amomin_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, uint32(min(int32(src), int32(c.reg[rd]))))
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, uint32(min(int32(src), int32(c.reg[rd]))))
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -275,8 +275,8 @@ func (c *Core) amominu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.UnsafeLoadThroughWord(addr)
-	c.UnsafeStoreThroughWord(addr, minu(src, c.reg[rd]))
+	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	c.unsafeStoreThroughWord(addr, minu(src, c.reg[rd]))
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
