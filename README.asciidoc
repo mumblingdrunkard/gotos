@@ -56,6 +56,7 @@ The `locktest` program shares a counter between four cores, all of them atomical
 This is achieved by a core acquiring a shared mutex, updating the value, then releasing the mutex.
 Upon acquiring a mutex, the cache needs to be invalidated in case shared data is updated.
 Upon releasing the mutex, the cache needs to be flushed so that other cores can fetch this new data.
+This leads to a lot of cache misses, but is required to ensure coherence.
 This nicely illustrates the idea that behaviour in C can be undefined when shared data is not properly handled.
 At least one core is bound to end with the final result `1024 * 16 * 4 = 0x00010000` placed in register `[10]`.
 
