@@ -261,12 +261,12 @@ func (c *Core) feq_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -286,12 +286,12 @@ func (c *Core) flt_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -311,12 +311,12 @@ func (c *Core) fle_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 

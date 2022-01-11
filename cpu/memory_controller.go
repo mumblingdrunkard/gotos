@@ -29,7 +29,7 @@ func newMemoryController(m *Memory, rs *ReservationSets) memoryController {
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	var inst uint32
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
@@ -41,7 +41,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&MEM_F_EXEC == 0 { // physical address is not marked executable
+	if flags&memFlagExec == 0 { // physical address is not marked executable
 		// TODO TRAP_INSTRUCTION_ACCESS_FAULT
 		return false, 0
 	}
@@ -53,9 +53,9 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 
 	if hit, instruction := c.mc.iCache.LoadWord(pAddr); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.iCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.iCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		_, instruction := c.mc.iCache.LoadWord(pAddr)
 		inst = instruction
@@ -69,7 +69,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 // Return the byte stored at
 func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -81,16 +81,16 @@ func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 		return false, 0
 	}
 
-	if flags&MEM_F_READ == 0 { // permissions
+	if flags&memFlagRead == 0 { // permissions
 		// TODO TRAP_LOAD_ACCESS_FAULT
 		return false, 0
 	}
 
 	if hit, b := c.mc.dCache.LoadByte(pAddr); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		_, b := c.mc.dCache.LoadByte(pAddr)
 		return true, b
@@ -101,7 +101,7 @@ func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 
 func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -113,7 +113,7 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 		return false, 0
 	}
 
-	if flags&MEM_F_READ == 0 { // permissions
+	if flags&memFlagRead == 0 { // permissions
 		// TODO TRAP_LOAD_ACCESS_FAULT
 		return false, 0
 	}
@@ -125,9 +125,9 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 
 	if hit, hw := c.mc.dCache.LoadHalfWord(pAddr); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		_, hw := c.mc.dCache.LoadHalfWord(pAddr)
 		return true, hw
@@ -138,7 +138,7 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 
 func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -150,7 +150,7 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&MEM_F_READ == 0 { // permissions
+	if flags&memFlagRead == 0 { // permissions
 		// TODO TRAP_LOAD_ACCESS_FAULT
 		return false, 0
 	}
@@ -162,9 +162,9 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 
 	if hit, w := c.mc.dCache.LoadWord(pAddr); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		_, w := c.mc.dCache.LoadWord(pAddr)
 		return true, w
@@ -175,7 +175,7 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 
 func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -187,7 +187,7 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 		return false, 0
 	}
 
-	if flags&MEM_F_READ == 0 { // permissions
+	if flags&memFlagRead == 0 { // permissions
 		// TODO TRAP_LOAD_ACCESS_FAULT
 		return false, 0
 	}
@@ -199,9 +199,9 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 
 	if hit, dw := c.mc.dCache.LoadDoubleWord(pAddr); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		_, dw := c.mc.dCache.LoadDoubleWord(pAddr)
 		return true, dw
@@ -213,7 +213,7 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 // Return the byte stored at
 func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -225,16 +225,16 @@ func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 		return false
 	}
 
-	if flags&MEM_F_WRITE == 0 { // permissions
+	if flags&memFlagWrite == 0 { // permissions
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
 		return false
 	}
 
 	if hit := c.mc.dCache.StoreByte(pAddr, b); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		c.mc.dCache.StoreByte(pAddr, b)
 	}
@@ -244,7 +244,7 @@ func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 
 func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -256,7 +256,7 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 		return false
 	}
 
-	if flags&MEM_F_WRITE == 0 { // permissions
+	if flags&memFlagWrite == 0 { // permissions
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
 		return false
 	}
@@ -268,9 +268,9 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 
 	if hit := c.mc.dCache.StoreHalfWord(pAddr, hw); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		c.mc.dCache.StoreHalfWord(pAddr, hw)
 	}
@@ -280,7 +280,7 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 
 func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -292,7 +292,7 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 		return false
 	}
 
-	if flags&MEM_F_WRITE == 0 { // permissions
+	if flags&memFlagWrite == 0 { // permissions
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
 		return false
 	}
@@ -304,9 +304,9 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 
 	if hit := c.mc.dCache.StoreWord(pAddr, w); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		c.mc.dCache.StoreWord(pAddr, w)
 	}
@@ -316,7 +316,7 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 
 func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -328,7 +328,7 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 		return false
 	}
 
-	if flags&MEM_F_WRITE == 0 { // permissions
+	if flags&memFlagWrite == 0 { // permissions
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
 		return false
 	}
@@ -340,9 +340,9 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 
 	if hit := c.mc.dCache.StoreDoubleWord(pAddr, dw); !hit {
 		c.mc.misses++
-		lineNumber := pAddr >> CACHE_LINE_OFFSET_BITS
+		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
-		c.mc.dCache.ReplaceRandom(lineNumber, CACHE_F_NONE, c.mc.mem.data[:])
+		c.mc.dCache.ReplaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
 		c.mc.dCache.StoreDoubleWord(pAddr, dw)
 	}
@@ -353,7 +353,7 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 // Loads a memory straight from memory, bypassing the cache.
 func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_LOAD_ACCESS_FAULT
@@ -365,7 +365,7 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&MEM_F_READ == 0 { // permissions
+	if flags&memFlagRead == 0 { // permissions
 		// TODO TRAP_LOAD_ACCESS_FAULT
 		return false, 0
 	}
@@ -376,7 +376,7 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	}
 
 	var value uint32
-	if c.mc.mem.endian == ENDIAN_BIG {
+	if c.mc.mem.endian == EndianBig {
 		value = binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
 	} else {
 		value = binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
@@ -392,7 +392,7 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 // Stores a word straight to memory, bypassing cache.
 func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.TranslateAndCheck(vAddr)
+	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
@@ -404,7 +404,7 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 		return false
 	}
 
-	if flags&MEM_F_WRITE == 0 { // permissions
+	if flags&memFlagWrite == 0 { // permissions
 		// TODO TRAP_STORE_OR_AMO_ACCESS_FAULT
 		return false
 	}
@@ -416,7 +416,7 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 
 	var bytes [4]uint8
 
-	if c.mc.mem.endian == ENDIAN_BIG {
+	if c.mc.mem.endian == EndianBig {
 		binary.BigEndian.PutUint32(bytes[:], w)
 	} else {
 		binary.LittleEndian.PutUint32(bytes[:], w)

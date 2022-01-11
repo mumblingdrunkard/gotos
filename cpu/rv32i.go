@@ -491,18 +491,18 @@ func (c *Core) fence(inst uint32) {
 
 // environment call
 func (c *Core) ecall(inst uint32) {
-	c.trap(false, 0, TRAP_ECALL_UMODE)
+	c.trap(TrapEcallUMode)
 
 	if c.reg[17] == 2 {
 		// sys_id
 		c.reg[10] = uint32(c.id)
 	} else {
-		c.state.Store(STATE_HALTING)
+		c.state.Store(CoreStateHalting)
 	}
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
 	// TODO no-op for now
-	c.state.Store(STATE_HALTING)
+	c.state.Store(CoreStateHalting)
 }

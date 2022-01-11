@@ -10,48 +10,50 @@ import (
 	"math"
 )
 
+type FRegisterNumber uint8
+
 // Mnemonics for Floating-Point registers
 const (
-	FREG_FT0  = 0  // FP temporaries
-	FREG_FT1  = 1  //
-	FREG_FT2  = 2  //
-	FREG_FT3  = 3  //
-	FREG_FT4  = 4  //
-	FREG_FT5  = 5  //
-	FREG_FT6  = 6  //
-	FREG_FT7  = 7  //
-	FREG_FS0  = 8  // FP saved registers
-	FREG_FS1  = 9  //
-	FREG_FA0  = 10 // FP arguments/return values
-	FREG_FA1  = 11 //
-	FREG_FA2  = 12 // FP arguments
-	FREG_FA3  = 13 //
-	FREG_FA4  = 14 //
-	FREG_FA5  = 15 //
-	FREG_FA6  = 16 //
-	FREG_FA7  = 17 //
-	FREG_FS2  = 18 // FP saved registers
-	FREG_FS3  = 19 //
-	FREG_FS4  = 20 //
-	FREG_FS5  = 21 //
-	FREG_FS6  = 22 //
-	FREG_FS7  = 23 //
-	FREG_FS8  = 24 //
-	FREG_FS9  = 25 //
-	FREG_FS10 = 26 //
-	FREG_FS11 = 27 //
-	FREG_FT8  = 28 // FP temporaries
-	FREG_FT9  = 29 //
-	FREG_FT10 = 30 //
-	FREG_FT11 = 31 //
+	FRegFT0  FRegisterNumber = 0  // FP temporaries
+	FRegFT1                  = 1  //
+	FRegFT2                  = 2  //
+	FRegFT3                  = 3  //
+	FRegFT4                  = 4  //
+	FRegFT5                  = 5  //
+	FRegFT6                  = 6  //
+	FRegFT7                  = 7  //
+	FRegFS0                  = 8  // FP saved registers
+	FRegFS1                  = 9  //
+	FRegFA0                  = 10 // FP arguments/return values
+	FRegFA1                  = 11 //
+	FRegFA2                  = 12 // FP arguments
+	FRegFA3                  = 13 //
+	FRegFA4                  = 14 //
+	FRegFA5                  = 15 //
+	FRegFA6                  = 16 //
+	FRegFA7                  = 17 //
+	FRegFS2                  = 18 // FP saved registers
+	FRegFS3                  = 19 //
+	FRegFS4                  = 20 //
+	FRegFS5                  = 21 //
+	FRegFS6                  = 22 //
+	FRegFS7                  = 23 //
+	FRegFS8                  = 24 //
+	FRegFS9                  = 25 //
+	FRegFS10                 = 26 //
+	FRegFS11                 = 27 //
+	FRegFT8                  = 28 // FP temporaries
+	FRegFT9                  = 29 //
+	FRegFT10                 = 30 //
+	FRegFT11                 = 31 //
 )
 
 const (
-	FCSR_F_NV uint32 = 0b10000
-	FCSR_F_DZ        = 0b01000
-	FCSR_F_OF        = 0b00100
-	FCSR_F_UF        = 0b00010
-	FCSR_F_NX        = 0b00001
+	fcsrFlagNV uint32 = 0b10000
+	fcsrFlagDZ        = 0b01000
+	fcsrFlagOF        = 0b00100
+	fcsrFlagUF        = 0b00010
+	fcsrFlagNX        = 0b00001
 )
 
 func (c *Core) flw(inst uint32) {
@@ -329,7 +331,7 @@ func (c *Core) feq_s(inst uint32) {
 	// quiet comparison, only signal if either input is signaling
 	if math.IsNaN(float64(f1)) {
 		if c.freg[rs1]&0x00400000 != 0x00400000 { // it's a signaling NaN
-			c.csr[CSR_FCSR] |= FCSR_F_NV
+			c.csr[csr_FCSR] |= fcsrFlagNV
 		}
 		c.reg[rd] = 0
 		return
@@ -337,7 +339,7 @@ func (c *Core) feq_s(inst uint32) {
 
 	if math.IsNaN(float64(f2)) {
 		if c.freg[rs2]&0x00400000 != 0x00400000 { // it's a signaling NaN
-			c.csr[CSR_FCSR] |= FCSR_F_NV
+			c.csr[csr_FCSR] |= fcsrFlagNV
 		}
 		c.reg[rd] = 0
 		return
@@ -359,13 +361,13 @@ func (c *Core) flt_s(inst uint32) {
 	f2 := math.Float32frombits(uint32(c.freg[rs2]))
 
 	if math.IsNaN(float64(f1)) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
 
 	if math.IsNaN(float64(f2)) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
@@ -386,13 +388,13 @@ func (c *Core) fle_s(inst uint32) {
 	f2 := math.Float32frombits(uint32(c.freg[rs2]))
 
 	if math.IsNaN(float64(f1)) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
 
 	if math.IsNaN(float64(f2)) {
-		c.csr[CSR_FCSR] |= FCSR_F_NV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}

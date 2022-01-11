@@ -6,52 +6,56 @@ import (
 	"sync/atomic"
 )
 
+type CoreState uint8
+
 const (
-	STATE_RUNNING = 2 // Core is running and executing instructions
-	STATE_HALTING = 1 // Core is running and executing instructions, but will turn off in the next cycle
-	STATE_HALTED  = 0 // Core is halted and will stay halted until Start() is called
+	CoreStateRunning CoreState = 2 // Core is running and executing instructions
+	CoreStateHalting           = 1 // Core is running and executing instructions, but will turn off in the next cycle
+	CoreStateHalted            = 0 // Core is halted and will stay halted until Start() is called
 )
+
+type RegisterNumber uint8
 
 // Register mnemonics
 const (
-	REG_ZERO = 0  // Hard-wired zero
-	REG_RA   = 1  // Return address
-	REG_SP   = 2  // Stack pointer
-	REG_GP   = 3  // Global pointer
-	REG_TP   = 4  // Thread pointer
-	REG_T0   = 5  // Temporary/alternate link register
-	REG_T1   = 6  // Temporaries
-	REG_T2   = 7  //
-	REG_S0   = 8  // Saved register/frame pointer
-	REG_FP   = 8  //
-	REG_S1   = 9  // Saved register
-	REG_A0   = 10 // Function arguments/return values
-	REG_A1   = 11 //
-	REG_A2   = 12 //
-	REG_A3   = 13 //
-	REG_A4   = 14 //
-	REG_A5   = 15 //
-	REG_A6   = 16 //
-	REG_A7   = 17 //
-	REG_S2   = 18 // Saved registers
-	REG_S3   = 19 //
-	REG_S4   = 20 //
-	REG_S5   = 21 //
-	REG_S6   = 22 //
-	REG_S7   = 23 //
-	REG_S8   = 24 //
-	REG_S9   = 25 //
-	REG_S10  = 26 //
-	REG_S11  = 27 //
-	REG_T3   = 28 // Temporaries
-	REG_T4   = 29 //
-	REG_T5   = 30 //
-	REG_T6   = 31 //
+	RegZero RegisterNumber = 0  // Hard-wired zero
+	RegRA                  = 1  // Return address
+	RegSP                  = 2  // Stack pointer
+	RegGP                  = 3  // Global pointer
+	RegTP                  = 4  // Thread pointer
+	RegT0                  = 5  // Temporary/alternate link register
+	RegT1                  = 6  // Temporaries
+	RegT2                  = 7  //
+	RegS0                  = 8  // Saved register/frame pointer
+	RegFP                  = 8  //
+	RegS1                  = 9  // Saved register
+	RegA0                  = 10 // Function arguments/return values
+	RegA1                  = 11 //
+	RegA2                  = 12 //
+	RegA3                  = 13 //
+	RegA4                  = 14 //
+	RegA5                  = 15 //
+	RegA6                  = 16 //
+	RegA7                  = 17 //
+	RegS2                  = 18 // Saved registers
+	RegS3                  = 19 //
+	RegS4                  = 20 //
+	RegS5                  = 21 //
+	RegS6                  = 22 //
+	RegS7                  = 23 //
+	RegS8                  = 24 //
+	RegS9                  = 25 //
+	RegS10                 = 26 //
+	RegS11                 = 27 //
+	RegT3                  = 28 // Temporaries
+	RegT4                  = 29 //
+	RegT5                  = 30 //
+	RegT6                  = 31 //
 )
 
 const (
-	ENDIAN_LITTLE Endian = 0
-	ENDIAN_BIG           = 1
+	EndianLittle Endian = 0
+	EndianBig           = 1
 )
 
 // A RISC-V core that runs in user mode
@@ -62,10 +66,10 @@ type Core struct {
 	retired uint64       // number of instructions executed/retired
 	reg     [32]uint32   // normal registers
 	csr     [4096]uint32 // control and status registers
-	fdirty  bool         // fp register file dirty bit
 	freg    [32]uint64   // fp registers
 	pc      uint32       // program counter
 	mc      memoryController
+	trapFn  func(*Core, TrapReason)
 }
 
 func (c *Core) fetch() uint32 {
@@ -89,7 +93,7 @@ func (c *Core) UnsafeSetMemSize(size uint32) {
 
 func (c *Core) run(wg *sync.WaitGroup) {
 	// Start running core in loop
-	if !c.state.CompareAndSwap(STATE_HALTED, STATE_RUNNING) {
+	if !c.state.CompareAndSwap(CoreStateHalted, CoreStateRunning) {
 		panic("Attempted to call `run()` on a core that was not in the HALTED state")
 	}
 
@@ -98,8 +102,8 @@ func (c *Core) run(wg *sync.WaitGroup) {
 	for {
 		// Test if state is HALTING, swap to HALTED if so, then break
 		// CompareAndSwap makes this very slow so we use Load instead
-		if c.state.Load() == STATE_HALTING {
-			c.state.Store(STATE_HALTED)
+		if c.state.Load() == CoreStateHalting {
+			c.state.Store(CoreStateHalted)
 			break
 		}
 
@@ -146,11 +150,11 @@ func (c *Core) UnsafeReset() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndWait() {
-	if c.state.Load() == STATE_HALTED {
+	if c.state.Load() == CoreStateHalted {
 		return
 	}
 
-	if !c.state.CompareAndSwap(STATE_RUNNING, STATE_HALTING) {
+	if !c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -163,7 +167,7 @@ func (c *Core) HaltAndWait() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if !c.state.CompareAndSwap(STATE_RUNNING, STATE_HALTING) {
+	if !c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -212,7 +216,7 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 		mc:      newMemoryController(m, rs),
 	}
 
-	c.state.Store(STATE_HALTED)
+	c.state.Store(CoreStateHalted)
 
 	c.UnsafeReset()
 
@@ -241,4 +245,20 @@ func (c *Core) DumpRegisters() {
 	for i, r := range c.reg {
 		fmt.Printf("[%02d]: %08X\n", i, r)
 	}
+}
+
+func (c *Core) SetIRegister(number RegisterNumber, value uint32) {
+	c.reg[number] = value
+}
+
+func (c *Core) SetFRegister(number FRegisterNumber, value uint64) {
+	c.freg[number] = value
+}
+
+func (c *Core) UnsafeSetState(state CoreState) {
+	c.state.Store(state)
+}
+
+func (c *Core) SetTrapHandler(handler func(*Core, TrapReason)) {
+	c.trapFn = handler
 }
