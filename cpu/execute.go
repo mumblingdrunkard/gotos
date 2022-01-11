@@ -1,3 +1,6 @@
+// This file contains logic for decoding 32 bit RISC-V instructions.
+// Decoding is implemented for the I, M, A, F, D, Zicsr, and Zifencei extensions.
+
 package cpu
 
 // TODO: Exceptions instead of panics
