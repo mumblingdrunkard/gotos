@@ -7,8 +7,8 @@ const (
 	MEM_F_NOCACHE       = 0x08 // if I ever get around to doing MMIO
 )
 
-// Very simple MMU
-type MMU struct {
+// Very simple mmu
+type mmu struct {
 	base uint32
 	size uint32
 }
@@ -17,13 +17,13 @@ type MMU struct {
 // This method should return (false, false, 0, 0) when the address is invalid
 // If a translation is valid, but the page is missing (when paging is implemented), the function should return (true, false, vAddr, flags)
 // If a translation is valid and the page is present, the function should return (true, true, vAddr, flags)
-func (m *MMU) TranslateAndCheck(vAddr uint32) (valid bool, present bool, pAddr uint32, flags uint8) {
+func (m *mmu) TranslateAndCheck(vAddr uint32) (valid bool, present bool, pAddr uint32, flags uint8) {
 	if pAddr >= m.size {
 		return false, false, 0, 0
 	}
 	return true, true, vAddr + m.base, MEM_F_READ | MEM_F_WRITE | MEM_F_EXEC
 }
 
-func NewMMU() MMU {
-	return MMU{}
+func newMMU() mmu {
+	return mmu{}
 }

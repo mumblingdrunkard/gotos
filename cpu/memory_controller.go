@@ -4,23 +4,23 @@ import (
 	"encoding/binary"
 )
 
-type MemoryController struct {
+type memoryController struct {
 	iCache   Cache
 	dCache   Cache
 	mem      *Memory          // RAM (possibly shared)
 	rsets    *ReservationSets // Reservation sets (possibly shared)
-	mmu      MMU
+	mmu      mmu
 	misses   uint64
 	accesses uint64
 }
 
-func NewMemoryController(m *Memory, rs *ReservationSets) MemoryController {
-	return MemoryController{
+func newMemoryController(m *Memory, rs *ReservationSets) memoryController {
+	return memoryController{
 		dCache: NewCache(m.endian),
 		iCache: NewCache(m.endian),
 		rsets:  rs,
 		mem:    m,
-		mmu:    NewMMU(),
+		mmu:    newMMU(),
 	}
 }
 

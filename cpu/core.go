@@ -65,7 +65,7 @@ type Core struct {
 	fdirty  bool         // fp register file dirty bit
 	freg    [32]uint64   // fp registers
 	pc      uint32       // program counter
-	mc      MemoryController
+	mc      memoryController
 }
 
 func (c *Core) fetch() uint32 {
@@ -209,7 +209,7 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int)
 	c = Core{
 		id:      id,
 		retired: 0,
-		mc:      NewMemoryController(m, rs),
+		mc:      newMemoryController(m, rs),
 	}
 
 	c.state.Store(STATE_HALTED)
