@@ -10,42 +10,40 @@ import (
 	"math"
 )
 
-type FRegisterNumber uint8
-
 // Mnemonics for Floating-Point registers
 const (
-	FRegFT0  FRegisterNumber = 0  // FP temporaries
-	FRegFT1                  = 1  //
-	FRegFT2                  = 2  //
-	FRegFT3                  = 3  //
-	FRegFT4                  = 4  //
-	FRegFT5                  = 5  //
-	FRegFT6                  = 6  //
-	FRegFT7                  = 7  //
-	FRegFS0                  = 8  // FP saved registers
-	FRegFS1                  = 9  //
-	FRegFA0                  = 10 // FP arguments/return values
-	FRegFA1                  = 11 //
-	FRegFA2                  = 12 // FP arguments
-	FRegFA3                  = 13 //
-	FRegFA4                  = 14 //
-	FRegFA5                  = 15 //
-	FRegFA6                  = 16 //
-	FRegFA7                  = 17 //
-	FRegFS2                  = 18 // FP saved registers
-	FRegFS3                  = 19 //
-	FRegFS4                  = 20 //
-	FRegFS5                  = 21 //
-	FRegFS6                  = 22 //
-	FRegFS7                  = 23 //
-	FRegFS8                  = 24 //
-	FRegFS9                  = 25 //
-	FRegFS10                 = 26 //
-	FRegFS11                 = 27 //
-	FRegFT8                  = 28 // FP temporaries
-	FRegFT9                  = 29 //
-	FRegFT10                 = 30 //
-	FRegFT11                 = 31 //
+	FRegFT0  = 0  // FP temporaries
+	FRegFT1  = 1  //
+	FRegFT2  = 2  //
+	FRegFT3  = 3  //
+	FRegFT4  = 4  //
+	FRegFT5  = 5  //
+	FRegFT6  = 6  //
+	FRegFT7  = 7  //
+	FRegFS0  = 8  // FP saved registers
+	FRegFS1  = 9  //
+	FRegFA0  = 10 // FP arguments/return values
+	FRegFA1  = 11 //
+	FRegFA2  = 12 // FP arguments
+	FRegFA3  = 13 //
+	FRegFA4  = 14 //
+	FRegFA5  = 15 //
+	FRegFA6  = 16 //
+	FRegFA7  = 17 //
+	FRegFS2  = 18 // FP saved registers
+	FRegFS3  = 19 //
+	FRegFS4  = 20 //
+	FRegFS5  = 21 //
+	FRegFS6  = 22 //
+	FRegFS7  = 23 //
+	FRegFS8  = 24 //
+	FRegFS9  = 25 //
+	FRegFS10 = 26 //
+	FRegFS11 = 27 //
+	FRegFT8  = 28 // FP temporaries
+	FRegFT9  = 29 //
+	FRegFT10 = 30 //
+	FRegFT11 = 31 //
 )
 
 const (

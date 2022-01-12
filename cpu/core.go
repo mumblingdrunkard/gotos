@@ -6,51 +6,47 @@ import (
 	"sync/atomic"
 )
 
-type CoreState uint8
-
 const (
-	CoreStateRunning CoreState = 2 // Core is running and executing instructions
-	CoreStateHalting           = 1 // Core is running and executing instructions, but will turn off in the next cycle
-	CoreStateHalted            = 0 // Core is halted and will stay halted until Start() is called
+	CoreStateRunning = 2 // Core is running and executing instructions
+	CoreStateHalting = 1 // Core is running and executing instructions, but will turn off in the next cycle
+	CoreStateHalted  = 0 // Core is halted and will stay halted until Start() is called
 )
-
-type RegisterNumber uint8
 
 // Register mnemonics
 const (
-	RegZero RegisterNumber = 0  // Hard-wired zero
-	RegRA                  = 1  // Return address
-	RegSP                  = 2  // Stack pointer
-	RegGP                  = 3  // Global pointer
-	RegTP                  = 4  // Thread pointer
-	RegT0                  = 5  // Temporary/alternate link register
-	RegT1                  = 6  // Temporaries
-	RegT2                  = 7  //
-	RegS0                  = 8  // Saved register/frame pointer
-	RegFP                  = 8  //
-	RegS1                  = 9  // Saved register
-	RegA0                  = 10 // Function arguments/return values
-	RegA1                  = 11 //
-	RegA2                  = 12 //
-	RegA3                  = 13 //
-	RegA4                  = 14 //
-	RegA5                  = 15 //
-	RegA6                  = 16 //
-	RegA7                  = 17 //
-	RegS2                  = 18 // Saved registers
-	RegS3                  = 19 //
-	RegS4                  = 20 //
-	RegS5                  = 21 //
-	RegS6                  = 22 //
-	RegS7                  = 23 //
-	RegS8                  = 24 //
-	RegS9                  = 25 //
-	RegS10                 = 26 //
-	RegS11                 = 27 //
-	RegT3                  = 28 // Temporaries
-	RegT4                  = 29 //
-	RegT5                  = 30 //
-	RegT6                  = 31 //
+	RegZero = 0  // Hard-wired zero
+	RegRA   = 1  // Return address
+	RegSP   = 2  // Stack pointer
+	RegGP   = 3  // Global pointer
+	RegTP   = 4  // Thread pointer
+	RegT0   = 5  // Temporary/alternate link register
+	RegT1   = 6  // Temporaries
+	RegT2   = 7  //
+	RegS0   = 8  // Saved register/frame pointer
+	RegFP   = 8  //
+	RegS1   = 9  // Saved register
+	RegA0   = 10 // Function arguments/return values
+	RegA1   = 11 //
+	RegA2   = 12 //
+	RegA3   = 13 //
+	RegA4   = 14 //
+	RegA5   = 15 //
+	RegA6   = 16 //
+	RegA7   = 17 //
+	RegS2   = 18 // Saved registers
+	RegS3   = 19 //
+	RegS4   = 20 //
+	RegS5   = 21 //
+	RegS6   = 22 //
+	RegS7   = 23 //
+	RegS8   = 24 //
+	RegS9   = 25 //
+	RegS10  = 26 //
+	RegS11  = 27 //
+	RegT3   = 28 // Temporaries
+	RegT4   = 29 //
+	RegT5   = 30 //
+	RegT6   = 31 //
 )
 
 const (
@@ -61,7 +57,7 @@ const (
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
-	id      int
+	id      uint32
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
 	retired uint64       // number of instructions executed/retired
 	reg     [32]uint32   // normal registers
@@ -209,7 +205,7 @@ func (c *Core) UnsafeStep() {
 	// }
 }
 
-func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id int) (c Core) {
+func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint32) (c Core) {
 	c = Core{
 		id:      id,
 		retired: 0,
@@ -247,16 +243,28 @@ func (c *Core) DumpRegisters() {
 	}
 }
 
-func (c *Core) SetIRegister(number RegisterNumber, value uint32) {
+func (c *Core) GetIRegister(number int) uint32 {
+	return c.reg[number]
+}
+
+func (c *Core) SetIRegister(number int, value uint32) {
 	c.reg[number] = value
 }
 
-func (c *Core) SetFRegister(number FRegisterNumber, value uint64) {
+func (c *Core) GetFRegister(number int) uint64 {
+	return c.freg[number]
+}
+
+func (c *Core) SetFRegister(number int, value uint64) {
 	c.freg[number] = value
 }
 
-func (c *Core) UnsafeSetState(state CoreState) {
+func (c *Core) UnsafeSetState(state int) {
 	c.state.Store(state)
+}
+
+func (c *Core) Id() uint32 {
+	return c.id
 }
 
 func (c *Core) SetTrapHandler(handler func(*Core, TrapReason)) {

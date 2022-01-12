@@ -41,14 +41,47 @@ func main() {
 	core0.SetTrapHandler(system.TrapHandler)
 	core0.UnsafeSetMemSize(1024 * 1024 * 1)
 
+	core1 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 1)
+	core1.SetTrapHandler(system.TrapHandler)
+	core1.UnsafeSetMemSize(1024 * 1024 * 2)
+
+	core2 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 2)
+	core2.SetTrapHandler(system.TrapHandler)
+	core2.UnsafeSetMemSize(1024 * 1024 * 3)
+
+	core3 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 3)
+	core3.SetTrapHandler(system.TrapHandler)
+	core3.UnsafeSetMemSize(1024 * 1024 * 4)
+
 	var wg sync.WaitGroup
 	core0.StartAndSync(&wg)
+	core1.StartAndSync(&wg)
+	core2.StartAndSync(&wg)
+	core3.StartAndSync(&wg)
 	// don't need to wait on wg since we're waiting on cores
 
 	core0.Wait()
+	core1.Wait()
+	core2.Wait()
+	core3.Wait()
 
 	fmt.Printf("\ncore0: %d cycles\n", core0.InstructionsRetired())
 	fmt.Printf("core0: %d misses\n", core0.Misses())
 	fmt.Printf("core0: %d accesses\n", core0.Accesses())
 	core0.DumpRegisters()
+
+	fmt.Printf("\ncore1: %d cycles\n", core1.InstructionsRetired())
+	fmt.Printf("core1: %d misses\n", core1.Misses())
+	fmt.Printf("core1: %d accesses\n", core1.Accesses())
+	core1.DumpRegisters()
+
+	fmt.Printf("\ncore2: %d cycles\n", core2.InstructionsRetired())
+	fmt.Printf("core2: %d misses\n", core2.Misses())
+	fmt.Printf("core2: %d accesses\n", core2.Accesses())
+	core2.DumpRegisters()
+
+	fmt.Printf("\ncore3: %d cycles\n", core3.InstructionsRetired())
+	fmt.Printf("core3: %d misses\n", core3.Misses())
+	fmt.Printf("core3: %d accesses\n", core3.Accesses())
+	core3.DumpRegisters()
 }
