@@ -76,7 +76,7 @@ func (c *Core) execute(inst uint32) {
 			case AND:
 				c.and(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case OP_B:
 			const (
@@ -91,7 +91,7 @@ func (c *Core) execute(inst uint32) {
 			case SRA:
 				c.sra(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case MULDIV:
 			const (
@@ -124,10 +124,10 @@ func (c *Core) execute(inst uint32) {
 			case REMU:
 				c.rem(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		default:
-			panic("Illegal instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case OP_IMM:
 		// op-imm funct3
@@ -161,7 +161,7 @@ func (c *Core) execute(inst uint32) {
 		case SRLI:
 			c.srli(inst)
 		default:
-			panic("Illegal instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case LUI:
 		c.lui(inst)
@@ -199,7 +199,7 @@ func (c *Core) execute(inst uint32) {
 		case BGEU:
 			c.bgeu(inst)
 		default:
-			panic("Illegal/unimplemented instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 		c.pc -= 4 // decrement pc as it will be incremented straight after
 	case LOAD:
@@ -225,7 +225,7 @@ func (c *Core) execute(inst uint32) {
 		case LHU:
 			c.lhu(inst)
 		default:
-			panic("Illegal/unimplemented instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case STORE:
 		// store funct3
@@ -244,7 +244,7 @@ func (c *Core) execute(inst uint32) {
 		case SW:
 			c.sw(inst)
 		default:
-			panic("Illegal/unimplemented instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case MISC_MEM:
 		// misc-mem funct3
@@ -260,7 +260,7 @@ func (c *Core) execute(inst uint32) {
 		case FENCE_I:
 			c.fence_i(inst)
 		default:
-			panic("Illegal instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case SYSTEM:
 		// system funct3
@@ -290,7 +290,7 @@ func (c *Core) execute(inst uint32) {
 			case EBREAK:
 				c.ebreak(inst)
 			default:
-				panic("Illegal/unimplemented instruction format")
+				c.trap(TrapIllegalInstruction)
 			}
 		case CSRRW:
 			c.csrrw(inst)
@@ -305,7 +305,7 @@ func (c *Core) execute(inst uint32) {
 		case CSRRCI:
 			c.csrrci(inst)
 		default:
-			panic("Illegal/unimplemented instruction format")
+			c.trap(TrapIllegalInstruction)
 		}
 	case AMO:
 		// AMO funct5
@@ -348,7 +348,7 @@ func (c *Core) execute(inst uint32) {
 		case AMOMAXU:
 			c.amomaxu_w(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case LOAD_FP:
 		const (
@@ -363,7 +363,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fld(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case STORE_FP:
 		const (
@@ -378,7 +378,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fsd(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case OP_FP:
 		const (
@@ -440,7 +440,7 @@ func (c *Core) execute(inst uint32) {
 			case FSGNJX_S:
 				c.fsgnjx_s(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FMNX_S:
 			const (
@@ -454,7 +454,7 @@ func (c *Core) execute(inst uint32) {
 			case FMAX_S:
 				c.fmax_s(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_WX_S:
 			const (
@@ -468,7 +468,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_WU_S:
 				c.fcvt_wu_s(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FMV_X_W_OR_FCLASS_S:
 			const (
@@ -482,7 +482,7 @@ func (c *Core) execute(inst uint32) {
 			case FCLASS_S:
 				c.fclass_s(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCMP_S:
 			const (
@@ -499,7 +499,7 @@ func (c *Core) execute(inst uint32) {
 			case FLE_S:
 				c.fle_s(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_S_WX:
 			const (
@@ -513,7 +513,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_S_WU:
 				c.fcvt_s_wu(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FMV_W_X:
 			c.fmv_w_x(inst)
@@ -543,7 +543,7 @@ func (c *Core) execute(inst uint32) {
 			case FSGNJX_D:
 				c.fsgnjn_d(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FMNX_D:
 			const (
@@ -557,7 +557,7 @@ func (c *Core) execute(inst uint32) {
 			case FMAX_D:
 				c.fmax_d(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_S_D:
 			c.fcvt_s_d(inst)
@@ -578,7 +578,7 @@ func (c *Core) execute(inst uint32) {
 			case FLE_D:
 				c.fle_d(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCLASS_D:
 			c.fclass_d(inst)
@@ -594,7 +594,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_WU_D:
 				c.fcvt_wu_d(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_D_WX:
 			const (
@@ -608,10 +608,10 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_D_WU:
 				c.fcvt_d_wu(inst)
 			default:
-				panic("Unknown instruction")
+				c.trap(TrapIllegalInstruction)
 			}
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case FMADD:
 		const (
@@ -625,7 +625,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fmadd_d(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case FMSUB:
 		const (
@@ -639,7 +639,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fmsub_d(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case FNMSUB:
 		const (
@@ -653,7 +653,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fnmadd_d(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	case FNMADD:
 		const (
@@ -667,9 +667,9 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fnmsub_d(inst)
 		default:
-			panic("Unknown instruction")
+			c.trap(TrapIllegalInstruction)
 		}
 	default:
-		panic("Unknown instruction")
+		c.trap(TrapIllegalInstruction)
 	}
 }
