@@ -313,8 +313,6 @@ func (c *Core) bgeu(inst uint32) {
 	}
 }
 
-// TODO: Caching and address translation for load and store instructions
-
 // load byte (signed)
 func (c *Core) lb(inst uint32) {
 	rd := (inst >> 7) & 0x1f             // dest
