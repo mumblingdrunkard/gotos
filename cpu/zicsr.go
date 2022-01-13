@@ -89,8 +89,7 @@ func (c *Core) csrrw(inst uint32) {
 		c.csr[csr] = c.reg[rs1]
 		c.reg[rd] = old
 	} else {
-		// illegal instruction?
-		panic("Illegal instruction (tried to access csr that was not user mode)")
+		c.trap(TrapIllegalInstruction)
 	}
 }
 
@@ -100,7 +99,7 @@ func (c *Core) csrrs(inst uint32) {
 	csr := (inst >> 20) & 0xfff
 
 	if csr&0xC00 != 0 { // check if user mode register
-		panic("Illegal access")
+		c.trap(TrapIllegalInstruction)
 	}
 
 	if rs1 != RegZero {
@@ -109,7 +108,7 @@ func (c *Core) csrrs(inst uint32) {
 			c.csr[csr] |= c.reg[rs1]
 			c.reg[rd] = old
 		} else {
-			panic("Illegal instruction (tried to access csr that was not user mode)")
+			c.trap(TrapIllegalInstruction)
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -122,7 +121,7 @@ func (c *Core) csrrc(inst uint32) {
 	csr := (inst >> 20) & 0xfff
 
 	if csr&0xC00 != 0 { // check if user mode register
-		panic("Illegal access")
+		c.trap(TrapIllegalInstruction)
 	}
 
 	if rs1 != RegZero {
@@ -131,7 +130,7 @@ func (c *Core) csrrc(inst uint32) {
 			c.csr[csr] &= (c.reg[rs1] ^ 0xFFFFFFFF) // AND with inverse of bit-pattern to unset select bits
 			c.reg[rd] = old
 		} else {
-			panic("Illegal instruction (tried to access csr that was not user mode)")
+			c.trap(TrapIllegalInstruction)
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -153,7 +152,7 @@ func (c *Core) csrrwi(inst uint32) {
 		c.reg[rd] = old
 	} else {
 		// illegal instruction?
-		panic("Illegal instruction (tried to access csr that was not user mode)")
+		c.trap(TrapIllegalInstruction)
 	}
 }
 
@@ -163,7 +162,7 @@ func (c *Core) csrrsi(inst uint32) {
 	csr := (inst >> 20) & 0xfff
 
 	if csr&0xC00 != 0 { // check if user mode register
-		panic("Illegal access")
+		c.trap(TrapIllegalInstruction)
 	}
 
 	if imm4_0 != 0 {
@@ -172,7 +171,7 @@ func (c *Core) csrrsi(inst uint32) {
 			c.csr[csr] |= imm4_0
 			c.reg[rd] = old
 		} else {
-			panic("Illegal instruction (tried to access csr that was not user mode)")
+			c.trap(TrapIllegalInstruction)
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -185,7 +184,7 @@ func (c *Core) csrrci(inst uint32) {
 	csr := (inst >> 20) & 0xfff
 
 	if csr&0xC00 != 0 { // check if user mode register
-		panic("Illegal access")
+		c.trap(TrapIllegalInstruction)
 	}
 
 	if imm4_0 != 0 {
@@ -194,7 +193,7 @@ func (c *Core) csrrci(inst uint32) {
 			c.csr[csr] &= (imm4_0 ^ 0xFFFFFFFF) // AND with inverse of bit-pattern to unset select bits
 			c.reg[rd] = old
 		} else {
-			panic("Illegal instruction (tried to access csr that was not user mode)")
+			c.trap(TrapIllegalInstruction)
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
