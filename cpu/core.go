@@ -57,6 +57,8 @@ const (
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
+	// The big core mutex (bcm) makes sure that only one goroutine is inside the fetch-decode-execute loop at any one time
+	bcm     sync.Mutex
 	id      uint32
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
 	retired uint64       // number of instructions executed/retired
@@ -88,9 +90,11 @@ func (c *Core) UnsafeSetMemSize(size uint32) {
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
+	c.bcm.Lock()
+
 	// Start running core in loop
 	if !c.state.CompareAndSwap(CoreStateHalted, CoreStateRunning) {
-		panic("Attempted to call `run()` on a core that was not in the HALTED state")
+		panic("Attempted to call `run(...)` on a core that was not in the HALTED state")
 	}
 
 	wg.Done() // core has switched to running state
@@ -105,6 +109,8 @@ func (c *Core) run(wg *sync.WaitGroup) {
 
 		c.UnsafeStep()
 	}
+
+	c.bcm.Unlock()
 
 	c.Done() // core is done
 }
@@ -125,6 +131,19 @@ func (c *Core) StartAndSync(wg *sync.WaitGroup) {
 	wg.Add(1)
 	c.Add(1) // caller can't accidentally wait on core
 	go c.run(wg)
+}
+
+// Starts the core only if it is halted
+// This is achieved by using the atomic CompareAndSwap, only calling .run() if the core was in a halted state.
+func (c *Core) StartIfHaltedAndSync(wg *sync.WaitGroup) bool {
+	halted := c.state.CompareAndSwap(CoreStateHalted, CoreStateRunning)
+	if halted {
+		c.Add(1)
+		wg.Add(1)
+		c.run(wg)
+		return true
+	}
+	return false
 }
 
 func (c *Core) UnsafeReset() {
@@ -259,8 +278,8 @@ func (c *Core) SetFRegister(number int, value uint64) {
 	c.freg[number] = value
 }
 
-func (c *Core) UnsafeSetState(state int) {
-	c.state.Store(state)
+func (c *Core) HaltIfRunning() bool {
+	return c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting)
 }
 
 func (c *Core) Id() uint32 {
