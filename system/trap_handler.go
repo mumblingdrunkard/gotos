@@ -2,10 +2,14 @@ package system
 
 import "gotos/cpu"
 
-func TrapHandler(c *cpu.Core, reason cpu.TrapReason) {
+func TrapHandler(c *cpu.Core) {
+	// get trap reason
+	reason := c.MCAUSE()
 	switch reason {
 	case cpu.TrapEcallUMode:
 		handleUModeEcall(c)
+	case cpu.TrapBreakpoint:
+		handleBreakpoint(c)
 	}
 }
 
@@ -26,10 +30,21 @@ func handleUModeEcall(c *cpu.Core) {
 	}
 }
 
+func handleBreakpoint(c *cpu.Core) {
+
+}
+
 func sysExit(c *cpu.Core) {
-	c.UnsafeSetState(cpu.CoreStateHalting)
+	// Check job queue
+
+	// If job queue is empty, halt the core
+	c.HaltIfRunning()
 }
 
 func sysId(c *cpu.Core) {
-	c.SetIRegister(cpu.RegA0, c.Id())
+	c.SetIRegister(cpu.RegA0, c.MHARTID())
+	// TODO increment pc
+	// This is done by setting the pc to the address *after* the one that caused the trap
+	// c.MEPC() will yield the address of the instruction that caused the trap
+	c.SetPC(c.MEPC() + 4)
 }

@@ -10,6 +10,8 @@ const (
 	MEMORY_SIZE = 1024 * 1024 * 4
 )
 
+type Endian uint8
+
 type Memory struct {
 	sync.Mutex
 	data   [MEMORY_SIZE]uint8

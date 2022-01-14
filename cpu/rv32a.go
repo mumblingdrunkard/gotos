@@ -43,15 +43,19 @@ func (c *Core) lr_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	_, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
-	// TODO: Do usual checks
 
 	// update rset
 	c.mc.rsets.Lock()
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
+	success, w := c.unsafeLoadThroughWord(addr)
+	if success {
+		c.reg[rd] = w
+	}
 	c.mc.mem.Unlock()
-	m := c.mc.rsets.lookup[c.id]
-	(*m)[pAddr] = true
+	if success {
+		m := c.mc.rsets.lookup[c.mhartid]
+		(*m)[pAddr] = true
+	}
 	c.mc.rsets.Unlock()
 }
 
@@ -67,16 +71,18 @@ func (c *Core) sc_w(inst uint32) {
 
 	c.mc.rsets.Lock()
 	// check rset
-	if _, ok := (*c.mc.rsets.lookup[c.id])[pAddr]; ok {
+	if _, ok := (*c.mc.rsets.lookup[c.mhartid])[pAddr]; ok {
 		fmt.Println("SC.W success!")
 		c.mc.mem.Lock()
-		c.unsafeStoreThroughWord(addr, c.reg[rs2])
+		success := c.unsafeStoreThroughWord(addr, c.reg[rs2])
 		c.mc.mem.Unlock()
 
-		// invalidate entries on all harts
-		c.reg[rd] = 0
-		for i := range c.mc.rsets.sets {
-			delete(*c.mc.rsets.lookup[i], pAddr)
+		if success {
+			// invalidate entries on all harts
+			c.reg[rd] = 0
+			for i := range c.mc.rsets.sets {
+				delete(*c.mc.rsets.lookup[i], pAddr)
+			}
 		}
 	} else {
 		// failed
@@ -84,7 +90,7 @@ func (c *Core) sc_w(inst uint32) {
 	}
 
 	// Regardless of success or failure, executing an SC.W instruction invalidates any reservation held by this hart.
-	delete(*c.mc.rsets.lookup[c.id], pAddr)
+	delete(*c.mc.rsets.lookup[c.mhartid], pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -99,8 +105,12 @@ func (c *Core) amoswap_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, src)
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		if c.unsafeStoreThroughWord(addr, src) {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -121,8 +131,12 @@ func (c *Core) amoadd_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, src+c.reg[rd])
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		if c.unsafeStoreThroughWord(addr, src+w) {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -145,6 +159,13 @@ func (c *Core) amoand_w(inst uint32) {
 	c.mc.mem.Lock()
 	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
 	c.unsafeStoreThroughWord(addr, src&c.reg[rd])
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, src&w)
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -165,8 +186,13 @@ func (c *Core) amoor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, src|c.reg[rd])
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, src|w)
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -187,8 +213,13 @@ func (c *Core) amoxor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, src^c.reg[rd])
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, src^w)
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -209,8 +240,13 @@ func (c *Core) amomax_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, uint32(max(int32(src), int32(c.reg[rd]))))
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, uint32(max(int32(src), int32(w))))
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -231,8 +267,13 @@ func (c *Core) amomaxu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, maxu(src, c.reg[rd]))
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, maxu(src, w))
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -253,8 +294,13 @@ func (c *Core) amomin_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, uint32(min(int32(src), int32(c.reg[rd]))))
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, uint32(min(int32(src), int32(w))))
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
@@ -275,8 +321,13 @@ func (c *Core) amominu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, minu(src, c.reg[rd]))
+	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	if lsuccess {
+		ssuccess := c.unsafeStoreThroughWord(addr, minu(src, w))
+		if ssuccess {
+			c.reg[rd] = w
+		}
+	}
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs

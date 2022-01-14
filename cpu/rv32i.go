@@ -228,8 +228,7 @@ func (c *Core) beq(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] == c.reg[rs2] {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -244,8 +243,7 @@ func (c *Core) bne(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] != c.reg[rs2] {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -260,8 +258,7 @@ func (c *Core) blt(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) < int32(c.reg[rs2]) {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -276,8 +273,7 @@ func (c *Core) bltu(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] < c.reg[rs2] {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -292,8 +288,7 @@ func (c *Core) bge(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if int32(c.reg[rs1]) >= int32(c.reg[rs2]) {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -308,8 +303,7 @@ func (c *Core) bgeu(inst uint32) {
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
 	if c.reg[rs1] >= c.reg[rs2] {
 		c.pc += offset
-	} else {
-		c.pc += 4
+		c.jumped = true
 	}
 }
 
@@ -323,8 +317,9 @@ func (c *Core) lb(inst uint32) {
 	success, b := c.loadByte(address)
 
 	if !success {
-		c.DumpRegisters()
-		panic("LB failed")
+		// c.DumpRegisters()
+		// panic("LB failed")
+		return
 	}
 
 	signed := int8(b)
@@ -455,8 +450,8 @@ func (c *Core) sw(inst uint32) {
 	success := c.storeWord(address, c.reg[rs2])
 
 	if !success {
-		c.DumpRegisters()
-		panic("SW failed")
+		// c.DumpRegisters()
+		// panic("SW failed")
 	}
 }
 
@@ -494,6 +489,5 @@ func (c *Core) ecall(inst uint32) {
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
-	// TODO no-op for now
-	c.state.Store(CoreStateHalting)
+	c.trap(TrapBreakpoint)
 }

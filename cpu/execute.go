@@ -1,9 +1,21 @@
 // This file contains logic for decoding 32 bit RISC-V instructions.
 // Decoding is implemented for the I, M, A, F, D, Zicsr, and Zifencei extensions.
 
-package cpu
+// RISC-V privileged specification says:
+//
+// ---
+//
+// If **mtval** is written with a nonzero value when an illegal-instruction exception occurs, then **mtval** will contain the shortest of:
+//
+// 1. the actual faulting instruction
+// 2. the first ILEN bits of the faulting instruction
+// 3. the first MXLEN bits of the faulting instruction.
+//
+// ---
+//
+// I have opted for the first alternative.
 
-// TODO: Exceptions instead of panics
+package cpu
 
 func (c *Core) execute(inst uint32) {
 	const (
@@ -27,8 +39,8 @@ func (c *Core) execute(inst uint32) {
 		FNMSUB          = 0b1001011
 		FNMADD          = 0b1001111
 	)
-	// Register 0 is hardwired with all 0s have to reset to 0 for every
-	// cycle because some instructions may use this as their /dev/null
+
+	// Register 0 is hardwired with all 0s have to reset to 0 for every cycle because some instructions may use this as their /dev/null
 	c.reg[0] = 0
 
 	opcode := inst & 0x7f
@@ -76,6 +88,7 @@ func (c *Core) execute(inst uint32) {
 			case AND:
 				c.and(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case OP_B:
@@ -91,6 +104,7 @@ func (c *Core) execute(inst uint32) {
 			case SRA:
 				c.sra(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case MULDIV:
@@ -124,9 +138,11 @@ func (c *Core) execute(inst uint32) {
 			case REMU:
 				c.rem(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case OP_IMM:
@@ -161,6 +177,7 @@ func (c *Core) execute(inst uint32) {
 		case SRLI:
 			c.srli(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case LUI:
@@ -169,10 +186,10 @@ func (c *Core) execute(inst uint32) {
 		c.auipc(inst)
 	case JAL:
 		c.jal(inst)
-		c.pc -= 4 // decrement pc as it will be incremented straight after
+		c.jumped = true
 	case JALR:
 		c.jalr(inst)
-		c.pc -= 4 // decrement pc as it will be incremented straight after
+		c.jumped = true
 	case BRANCH:
 		// branch funct3
 		const (
@@ -199,9 +216,9 @@ func (c *Core) execute(inst uint32) {
 		case BGEU:
 			c.bgeu(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
-		c.pc -= 4 // decrement pc as it will be incremented straight after
 	case LOAD:
 		// load funct3
 		const (
@@ -225,6 +242,7 @@ func (c *Core) execute(inst uint32) {
 		case LHU:
 			c.lhu(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case STORE:
@@ -244,6 +262,7 @@ func (c *Core) execute(inst uint32) {
 		case SW:
 			c.sw(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case MISC_MEM:
@@ -260,6 +279,7 @@ func (c *Core) execute(inst uint32) {
 		case FENCE_I:
 			c.fence_i(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case SYSTEM:
@@ -290,6 +310,7 @@ func (c *Core) execute(inst uint32) {
 			case EBREAK:
 				c.ebreak(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case CSRRW:
@@ -305,6 +326,7 @@ func (c *Core) execute(inst uint32) {
 		case CSRRCI:
 			c.csrrci(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case AMO:
@@ -348,6 +370,7 @@ func (c *Core) execute(inst uint32) {
 		case AMOMAXU:
 			c.amomaxu_w(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case LOAD_FP:
@@ -363,6 +386,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fld(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case STORE_FP:
@@ -378,6 +402,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fsd(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case OP_FP:
@@ -440,6 +465,7 @@ func (c *Core) execute(inst uint32) {
 			case FSGNJX_S:
 				c.fsgnjx_s(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FMNX_S:
@@ -454,6 +480,7 @@ func (c *Core) execute(inst uint32) {
 			case FMAX_S:
 				c.fmax_s(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_WX_S:
@@ -468,6 +495,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_WU_S:
 				c.fcvt_wu_s(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FMV_X_W_OR_FCLASS_S:
@@ -482,6 +510,7 @@ func (c *Core) execute(inst uint32) {
 			case FCLASS_S:
 				c.fclass_s(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCMP_S:
@@ -499,6 +528,7 @@ func (c *Core) execute(inst uint32) {
 			case FLE_S:
 				c.fle_s(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_S_WX:
@@ -513,6 +543,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_S_WU:
 				c.fcvt_s_wu(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FMV_W_X:
@@ -543,6 +574,7 @@ func (c *Core) execute(inst uint32) {
 			case FSGNJX_D:
 				c.fsgnjn_d(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FMNX_D:
@@ -557,6 +589,7 @@ func (c *Core) execute(inst uint32) {
 			case FMAX_D:
 				c.fmax_d(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_S_D:
@@ -578,6 +611,7 @@ func (c *Core) execute(inst uint32) {
 			case FLE_D:
 				c.fle_d(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCLASS_D:
@@ -594,6 +628,7 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_WU_D:
 				c.fcvt_wu_d(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		case FCVT_D_WX:
@@ -608,9 +643,11 @@ func (c *Core) execute(inst uint32) {
 			case FCVT_D_WU:
 				c.fcvt_d_wu(inst)
 			default:
+				c.mtval = inst
 				c.trap(TrapIllegalInstruction)
 			}
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case FMADD:
@@ -625,6 +662,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fmadd_d(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case FMSUB:
@@ -639,6 +677,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fmsub_d(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case FNMSUB:
@@ -653,6 +692,7 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fnmadd_d(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	case FNMADD:
@@ -667,9 +707,11 @@ func (c *Core) execute(inst uint32) {
 		case D:
 			c.fnmsub_d(inst)
 		default:
+			c.mtval = inst
 			c.trap(TrapIllegalInstruction)
 		}
 	default:
+		c.mtval = inst
 		c.trap(TrapIllegalInstruction)
 	}
 }

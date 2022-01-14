@@ -27,18 +27,16 @@ const (
 	cacheFlagStale       = 0x02 // stale flag - triggers/or should trigger a refresh when a stale line is accessed
 )
 
-// A CacheLine contains
-type CacheLine struct {
+// A cacheLine contains
+type cacheLine struct {
 	number uint32
 	flags  uint8
 	data   [cacheLineLength]uint8
 }
 
-type Endian uint8
-
-type Cache struct {
-	lines  [cacheLineCount]CacheLine
-	lookup map[uint32]*CacheLine
+type cache struct {
+	lines  [cacheLineCount]cacheLine
+	lookup map[uint32]*cacheLine
 	size   int
 	endian Endian
 }
@@ -46,7 +44,7 @@ type Cache struct {
 // Attempts to load a byte (uint8) from cache.
 // If the cache line containing the byte is present and not marked stale, returns
 // (true, byte), oherwise (false, 0).
-func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
+func (c *cache) loadByte(address uint32) (present bool, byte uint8) {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -62,7 +60,7 @@ func (c *Cache) LoadByte(address uint32) (present bool, byte uint8) {
 // Attempts to load a halfword (uint16) from cache.
 // If the cache line containing the halfword is present and not marked stale, returns
 // (true, halfword), oherwise (false, 0).
-func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
+func (c *cache) loadHalfWord(address uint32) (bool, uint16) {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -82,7 +80,7 @@ func (c *Cache) LoadHalfWord(address uint32) (bool, uint16) {
 // Attempts to load a word (uint32) from cache.
 // If the cache line containing the word is present and not marked stale, returns
 // (true, word), oherwise (false, 0).
-func (c *Cache) LoadWord(address uint32) (bool, uint32) {
+func (c *cache) loadWord(address uint32) (bool, uint32) {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -102,7 +100,7 @@ func (c *Cache) LoadWord(address uint32) (bool, uint32) {
 // Attempts to load a doubleword (uint64) from cache.
 // If the cache line containing the doubleword is present and not marked stale, returns
 // (true, doubleword), oherwise (false, 0).
-func (c *Cache) LoadDoubleWord(address uint32) (bool, uint64) {
+func (c *cache) loadDoubleWord(address uint32) (bool, uint64) {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -122,7 +120,7 @@ func (c *Cache) LoadDoubleWord(address uint32) (bool, uint64) {
 // Attempts to store a byte (uint8) to cache.
 // If the cache line containing the byte is present and not marked stale, stores
 // the byte and returns true, false otherwise.
-func (c *Cache) StoreByte(address uint32, b uint8) bool {
+func (c *cache) storeByte(address uint32, b uint8) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -140,8 +138,7 @@ func (c *Cache) StoreByte(address uint32, b uint8) bool {
 // Attempts to store a halfword (uint16) to cache.
 // If the cache line containing the halfword is present and not marked stale, stores
 // the halfword and returns true, false otherwise.
-func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
-	// TODO
+func (c *cache) storeHalfWord(address uint32, hw uint16) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -165,7 +162,7 @@ func (c *Cache) StoreHalfWord(address uint32, hw uint16) bool {
 // Attempts to store a word (uint32) to cache.
 // If the cache line containing the word is present and not marked stale, stores
 // the word and returns true, false otherwise.
-func (c *Cache) StoreWord(address uint32, w uint32) bool {
+func (c *cache) storeWord(address uint32, w uint32) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -189,7 +186,7 @@ func (c *Cache) StoreWord(address uint32, w uint32) bool {
 // Attempts to store a doubleword (uint32) to cache.
 // If the cache line containing the doubleword is present and not marked stale, stores
 // the doubleword and returns true, false otherwise.
-func (c *Cache) StoreDoubleWord(address uint32, dw uint64) bool {
+func (c *cache) storeDoubleWord(address uint32, dw uint64) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -214,7 +211,7 @@ func (c *Cache) StoreDoubleWord(address uint32, dw uint64) bool {
 // the store is completed.
 // If the cache line containing the word is present and not marked stale, stores
 // the word and returns true, false otherwise.
-func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
+func (c *cache) storeWordNoDirty(address uint32, w uint32) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -248,7 +245,7 @@ func (c *Cache) StoreWordNoDirty(address uint32, w uint32) bool {
 // it is replaced with the new data.
 //
 // Returns true if a replacement/refresh was performed, false otherwise.
-func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool {
+func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool {
 	// if line is already present
 	if _, present := c.lookup[lineNumber]; present {
 		line := c.lookup[lineNumber]
@@ -295,7 +292,7 @@ func (c *Cache) ReplaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 
 // Flushes all cache-lines back to `src`.
 // Helpful if you want all other cores to see changes made by this core.
-func (c *Cache) FlushAll(src []uint8) int {
+func (c *cache) flushAll(src []uint8) int {
 	flushed := 0
 	for i := range c.lines {
 		line := &c.lines[i]
@@ -315,16 +312,16 @@ func (c *Cache) FlushAll(src []uint8) int {
 
 // Marks all cache-lines as stale.
 // Helpful if you want to guarantee that you can see updates made from other cores.
-func (c *Cache) InvalidateAll() {
+func (c *cache) invalidateAll() {
 	for i := range c.lines {
 		line := &c.lines[i]
 		line.flags |= cacheFlagStale
 	}
 }
 
-func NewCache(endian Endian) Cache {
-	return Cache{
-		lookup: make(map[uint32]*CacheLine, cacheLineCount),
+func newCache(endian Endian) cache {
+	return cache{
+		lookup: make(map[uint32]*cacheLine, cacheLineCount),
 		endian: endian,
 	}
 }
