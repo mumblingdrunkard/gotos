@@ -53,6 +53,7 @@ A collection of ideas for lab assigments relating to gotos.
 
 .*What? This isn't a book!* (paging)
 * Pages and frames
+* Page-table walker (not really an OS thing, but it's nice to understand the architecture.)
 
 .*What? This isn't the library!* (multi-level page tables)
 * More flags!
