@@ -85,14 +85,14 @@ type Core struct {
 	mepc    uint32
 }
 
-func (c *Core) fetch() uint32 {
+func (c *Core) fetch() (bool, uint32) {
 	success, inst := c.loadInstruction(c.pc)
 
 	if !success {
-		panic("Failed to load instruction")
+		return false, 0
 	}
 
-	return inst
+	return true, inst
 }
 
 func (c *Core) UnsafeSetMemBase(base uint32) {
@@ -205,19 +205,13 @@ func (c *Core) HaltIfRunning() bool {
 }
 
 func (c *Core) UnsafeStep() {
-	// TODO: Check for interrupts
-	// WARNING: large performance penalty
-	// select {
-	// case interrupt := <-c.inch:
-	// 	fmt.Printf("Core was interrupted : {%d, %d}\n", interrupt.why, interrupt.how)
-	// default:
-	// 	// Nothing
-	// }
+	// TODO:  interrupts
+	success, inst := c.fetch()
 
-	c.retired += 1
-	inst := c.fetch()
-
-	c.execute(inst)
+	if success {
+		c.execute(inst)
+		c.retired += 1
+	}
 
 	// Only increment pc if the processor did not trap or perform a jump
 	// This means that branches and jumps don't need to jump to the address *before* the intended target.
