@@ -59,12 +59,6 @@ const (
 	EndianBig           = 1
 )
 
-type Timer struct {
-}
-
-type Counter struct {
-}
-
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
@@ -159,7 +153,7 @@ func (c *Core) UnsafeReset() {
 		c.reg[i] = 0
 	}
 
-	// TODO: Initialize reg[2] with memory size
+	// Initialize reg[2] with memory size
 	c.reg[2] = c.mc.mmu.size
 
 	c.pc = 0
@@ -167,7 +161,7 @@ func (c *Core) UnsafeReset() {
 }
 
 // Halts the core and waits for it to halt before returning
-// TODO: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
+// WARNING: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
 // Possible fix, check for halted state first, if so, return immediately
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
@@ -184,7 +178,7 @@ func (c *Core) HaltAndWait() {
 }
 
 // Halts the core, but leaves it to the caller to sync
-// TODO: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
+// WARNING: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
 // Possible fix, check for halted state first, if so, return immediately
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
@@ -276,6 +270,10 @@ func (c *Core) GetFRegister(number int) uint64 {
 
 func (c *Core) SetFRegister(number int, value uint64) {
 	c.freg[number] = value
+}
+
+func (c *Core) SetBootHandler(handler func(*Core)) {
+
 }
 
 func (c *Core) SetTrapHandler(handler func(*Core)) {
