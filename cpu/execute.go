@@ -41,10 +41,21 @@ func (c *Core) execute(inst uint32) {
 	)
 
 	// Register 0 is hardwired with all 0s have to reset to 0 for every cycle because some instructions may use this as their /dev/null
-	c.reg[0] = 0
+	c.reg[RegZero] = 0
+
+	// From the RISC-V privileged spec:
+	//
+	// ---
+	//
+	// For other traps, **mtval** is set to zero, but a future standard may redefine **mtval**'s setting for other traps.
+	//
+	// ---
+	//
+	// This ensures that mtval is always 0 before entering an instruction.
+	// Before a trap is raised, mtval may be set.
+	c.mtval = 0
 
 	opcode := inst & 0x7f
-
 	switch opcode {
 	case OP:
 		// OP funct7
@@ -53,7 +64,6 @@ func (c *Core) execute(inst uint32) {
 			OP_B          = 0b0100000
 			MULDIV        = 0b0000001
 		)
-
 		funct7 := (inst >> 25) & 0x7f
 		switch funct7 {
 		case OP_A:
@@ -68,7 +78,6 @@ func (c *Core) execute(inst uint32) {
 				OR          = 0b110
 				AND         = 0b111
 			)
-
 			funct3 := (inst >> 12) & 0x7
 			switch funct3 {
 			case ADD:
@@ -96,7 +105,6 @@ func (c *Core) execute(inst uint32) {
 				SUB uint32 = 0b000
 				SRA        = 0b101
 			)
-
 			funct3 := (inst >> 12) & 0x7
 			switch funct3 {
 			case SUB:
