@@ -61,14 +61,9 @@ func (c *Core) flw(inst uint32) {
 
 	address := c.reg[rs1] + imm11_0
 
-	success, word := c.loadWord(address)
-
-	if !success {
-		c.DumpRegisters()
-		panic("Failed")
+	if success, word := c.loadWord(address); success {
+		c.freg[rd] = 0xFFFFFFFF00000000 | uint64(word)
 	}
-
-	c.freg[rd] = 0xFFFFFFFF00000000 | uint64(word)
 }
 
 func (c *Core) fsw(inst uint32) {
@@ -81,12 +76,7 @@ func (c *Core) fsw(inst uint32) {
 
 	address := c.reg[rs1] + offset
 
-	success := c.storeWord(address, uint32(c.freg[rs2]))
-
-	if !success {
-		c.DumpRegisters()
-		panic("Failed")
-	}
+	c.storeWord(address, uint32(c.freg[rs2]))
 }
 
 // float multiply and add
@@ -208,7 +198,9 @@ func (c *Core) fsqrt_s(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	f1 := math.Float32frombits(uint32(c.freg[rs1]))
@@ -307,12 +299,16 @@ func (c *Core) fmv_x_w(inst uint32) {
 
 	rs2 := (inst >> 20) & 0x1f // source fp register
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	rm := (inst >> 12) & 0x7
 	if rm != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	c.reg[rd] = uint32(c.freg[rs1])
@@ -410,7 +406,9 @@ func (c *Core) fclass_s(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f // source fp register
 
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	f1 := math.Float32frombits(uint32(c.freg[rs1]))
@@ -462,12 +460,16 @@ func (c *Core) fmv_w_x(inst uint32) {
 
 	rs2 := (inst >> 20) & 0x1f // source fp register
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	rm := (inst >> 12) & 0x7
 	if rm != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	c.freg[rd] = 0xFFFFFFFF00000000 | uint64(c.reg[rs1])

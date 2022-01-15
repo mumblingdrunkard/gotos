@@ -9,22 +9,16 @@ import "math"
 // Programs should also not depend on the state of the FCSR containing correct exception flags.
 
 func (c *Core) fld(inst uint32) {
-	// TODO
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	imm11_0 := uint32(int32(inst) >> 20)
 
-	success, val := c.loadDoubleWord(c.reg[rs1] + imm11_0)
-
-	if !success {
-		panic("Failed")
+	if success, val := c.loadDoubleWord(c.reg[rs1] + imm11_0); success {
+		c.freg[rd] = val
 	}
-
-	c.freg[rd] = val
 }
 
 func (c *Core) fsd(inst uint32) {
-	// TODO
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm11_5 := uint32(int32(inst) >> 25)
@@ -32,11 +26,7 @@ func (c *Core) fsd(inst uint32) {
 
 	addr := c.reg[rs1] + ((imm11_5 << 5) | imm4_0)
 
-	success := c.storeDoubleWord(addr, c.freg[rs2])
-
-	if !success {
-		panic("Failed")
-	}
+	c.storeDoubleWord(addr, c.freg[rs2])
 }
 
 func (c *Core) fmadd_d(inst uint32) {
@@ -157,7 +147,8 @@ func (c *Core) fsqrt_d(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
 	}
 
 	f1 := math.Float64frombits(c.freg[rs1])
@@ -331,7 +322,8 @@ func (c *Core) fclass_d(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f // source fp register
 
 	if rs2 != 0 {
-		panic("Illegal instruction")
+		c.mtval = inst
+		c.trap(TrapIllegalInstruction)
 	}
 
 	f1 := math.Float64frombits(c.freg[rs1])
