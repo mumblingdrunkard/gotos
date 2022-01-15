@@ -508,12 +508,10 @@ func (c *Core) fence(inst uint32) {
 
 // environment call
 func (c *Core) ecall(inst uint32) {
-	// TODO Do I have to set mtval here?
 	c.trap(TrapEcallUMode)
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
-	// TODO Do I have to set mtval here?
 	c.trap(TrapBreakpoint)
 }
