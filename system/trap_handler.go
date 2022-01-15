@@ -1,6 +1,9 @@
 package system
 
-import "gotos/cpu"
+import (
+	"fmt"
+	"gotos/cpu"
+)
 
 func TrapHandler(c *cpu.Core) {
 	// get trap reason
@@ -8,12 +11,17 @@ func TrapHandler(c *cpu.Core) {
 	switch reason {
 	case cpu.TrapEcallUMode:
 		handleUModeEcall(c)
+	case cpu.TrapInstructionAddressMisaligned:
+		handleInstructionAddressMisaligned(c)
 	case cpu.TrapBreakpoint:
 		handleBreakpoint(c)
 	}
 }
 
-// System calls
+//
+// Trap handlers
+//
+
 func handleUModeEcall(c *cpu.Core) {
 	const (
 		sys_exit = 1
@@ -34,10 +42,20 @@ func handleBreakpoint(c *cpu.Core) {
 
 }
 
-func sysExit(c *cpu.Core) {
-	// Check job queue
+func handleInstructionAddressMisaligned(c *cpu.Core) {
+	fmt.Printf("[core %d]: Instruction Address Misaligned. **mtval** : %08X\n", c.MHARTID(), c.MTVAL())
+	c.HaltIfRunning()
+}
 
-	// If job queue is empty, halt the core
+//
+// syscalls
+//
+
+func sysExit(c *cpu.Core) {
+	// TODO sys_exit just halts the core
+	// Instead, extract return value and store somewhere safe.
+	// Start the next process in the queue
+	// Halt if the queue is empty
 	c.HaltIfRunning()
 }
 
