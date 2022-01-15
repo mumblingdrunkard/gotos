@@ -186,10 +186,8 @@ func (c *Core) execute(inst uint32) {
 		c.auipc(inst)
 	case JAL:
 		c.jal(inst)
-		c.jumped = true
 	case JALR:
 		c.jalr(inst)
-		c.jumped = true
 	case BRANCH:
 		// branch funct3
 		const (
