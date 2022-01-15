@@ -62,7 +62,7 @@ const (
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
-	// The big core mutex (bcm) makes sure that only one goroutine is inside the fetch-decode-execute loop at any one time
+	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
 	bcm     sync.Mutex
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
 	jumped  bool
