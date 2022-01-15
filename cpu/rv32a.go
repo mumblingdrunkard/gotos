@@ -1,7 +1,5 @@
 package cpu
 
-import "fmt"
-
 // TODO raise exceptions when addresses are misaligned
 
 // TODO remove helper functions to not pollute namespace, only used once each anyway
@@ -72,7 +70,6 @@ func (c *Core) sc_w(inst uint32) {
 	c.mc.rsets.Lock()
 	// check rset
 	if _, ok := (*c.mc.rsets.lookup[c.mhartid])[pAddr]; ok {
-		fmt.Println("SC.W success!")
 		c.mc.mem.Lock()
 		success := c.unsafeStoreThroughWord(addr, c.reg[rs2])
 		c.mc.mem.Unlock()
@@ -139,7 +136,7 @@ func (c *Core) amoadd_w(inst uint32) {
 	}
 	c.mc.mem.Unlock()
 
-	// Invalidate LRs
+	// Invalidate LR in all cores
 	for i := range c.mc.rsets.sets {
 		delete(*c.mc.rsets.lookup[i], pAddr)
 	}
