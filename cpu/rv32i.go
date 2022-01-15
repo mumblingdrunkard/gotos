@@ -191,7 +191,6 @@ func (c *Core) sra(inst uint32) {
 	c.reg[rd] = uint32(int32(c.reg[rs1]) >> shift_amount)
 }
 
-// TODO: figure out how to raise exceptions when jumps are misaligned
 // jump and link
 func (c *Core) jal(inst uint32) {
 	rd := (inst >> 7) & 0x1f
@@ -203,8 +202,16 @@ func (c *Core) jal(inst uint32) {
 	// Why couldn't this just be imm[20:1] ?
 	// I think this is how it's supposed to work?
 	offset := (imm10_1 << 1) | (imm11 << 11) | (imm19_12 << 12) | (imm20 << 20)
-	c.reg[rd] = c.pc + 4
-	c.pc = c.pc + offset
+
+	targetAddress := c.pc + offset
+	if targetAddress&0x3 != 0 {
+		c.mtval = targetAddress
+		c.trap(TrapInstructionAddressMisaligned)
+	} else {
+		c.reg[rd] = c.pc + 4
+		c.pc = targetAddress
+		c.jumped = true
+	}
 }
 
 // jump and link register
@@ -213,8 +220,17 @@ func (c *Core) jalr(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 	rs1_val := c.reg[rs1]
 	imm11_0 := uint32(int32(inst) >> 20)
-	c.reg[rd] = c.pc + 4
-	c.pc = (rs1_val + imm11_0) & 0xfffffffe
+
+	targetAddress := (imm11_0 + rs1_val) & 0xfffffffe
+
+	if targetAddress&0x3 != 0 {
+		c.mtval = targetAddress
+		c.trap(TrapInstructionAddressMisaligned)
+	} else {
+		c.reg[rd] = c.pc + 4
+		c.pc = targetAddress
+		c.jumped = true
+	}
 }
 
 // branch equal
@@ -226,10 +242,19 @@ func (c *Core) beq(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if c.reg[rs1] == c.reg[rs2] {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
+
 }
 
 // branch not equal
@@ -241,9 +266,17 @@ func (c *Core) bne(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if c.reg[rs1] != c.reg[rs2] {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
 }
 
@@ -256,9 +289,17 @@ func (c *Core) blt(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if int32(c.reg[rs1]) < int32(c.reg[rs2]) {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
 }
 
@@ -271,9 +312,17 @@ func (c *Core) bltu(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if c.reg[rs1] < c.reg[rs2] {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
 }
 
@@ -286,9 +335,17 @@ func (c *Core) bge(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if int32(c.reg[rs1]) >= int32(c.reg[rs2]) {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
 }
 
@@ -301,9 +358,17 @@ func (c *Core) bgeu(inst uint32) {
 	imm10_5 := (inst >> 25) & 0x3f
 	imm12 := (int32(inst) >> 31) // sign extended
 	offset := (uint32(imm12) << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+
+	targetAddress := c.pc + offset
+
 	if c.reg[rs1] >= c.reg[rs2] {
-		c.pc += offset
-		c.jumped = true
+		if targetAddress&0x3 != 0 {
+			c.mtval = targetAddress
+			c.trap(TrapInstructionAddressMisaligned)
+		} else {
+			c.pc = targetAddress
+			c.jumped = true
+		}
 	}
 }
 
@@ -314,18 +379,12 @@ func (c *Core) lb(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, b := c.loadByte(address)
-
-	if !success {
-		// c.DumpRegisters()
-		// panic("LB failed")
-		return
+	if success, b := c.loadByte(address); success {
+		signed := int8(b)
+		extended := int32(signed)
+		converted := uint32(extended)
+		c.reg[rd] = converted
 	}
-
-	signed := int8(b)
-	extended := int32(signed)
-	converted := uint32(extended)
-	c.reg[rd] = converted
 }
 
 // load half (signed)
@@ -335,17 +394,12 @@ func (c *Core) lh(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, hw := c.loadHalfWord(address)
-
-	if !success {
-		c.DumpRegisters()
-		panic("LH failed")
+	if success, hw := c.loadHalfWord(address); success {
+		signed := int16(hw)
+		extended := int32(signed)
+		converted := uint32(extended)
+		c.reg[rd] = converted
 	}
-
-	signed := int16(hw)
-	extended := int32(signed)
-	converted := uint32(extended)
-	c.reg[rd] = converted
 }
 
 // load word
@@ -355,14 +409,9 @@ func (c *Core) lw(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, w := c.loadWord(address)
-
-	if !success {
-		c.DumpRegisters()
-		panic("LW failed")
+	if success, w := c.loadWord(address); success {
+		c.reg[rd] = w
 	}
-
-	c.reg[rd] = w
 }
 
 // load byte unsigned
@@ -372,14 +421,9 @@ func (c *Core) lbu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, b := c.loadByte(address)
-
-	if !success {
-		c.DumpRegisters()
-		panic("LBU failed")
+	if success, b := c.loadByte(address); success {
+		c.reg[rd] = uint32(b)
 	}
-
-	c.reg[rd] = uint32(b)
 }
 
 // load half unsigned
@@ -389,14 +433,9 @@ func (c *Core) lhu(inst uint32) {
 	imm11_0 := uint32(int32(inst) >> 20) // offset
 	address := imm11_0 + c.reg[rs1]
 
-	success, hw := c.loadHalfWord(address)
-
-	if !success {
-		c.DumpRegisters()
-		panic("LHU failed")
+	if success, hw := c.loadHalfWord(address); success {
+		c.reg[rd] = uint32(hw)
 	}
-
-	c.reg[rd] = uint32(hw)
 }
 
 // store byte
@@ -410,12 +449,7 @@ func (c *Core) sb(inst uint32) {
 	address := offset + c.reg[rs1]
 	b := uint8(c.reg[rs2] & 0xff)
 
-	success := c.storeByte(address, b)
-
-	if !success {
-		c.DumpRegisters()
-		panic("SB failed")
-	}
+	c.storeByte(address, b)
 }
 
 // store half
@@ -429,12 +463,7 @@ func (c *Core) sh(inst uint32) {
 	address := offset + c.reg[rs1]
 	hw := uint16(c.reg[rs2] & 0xffff)
 
-	success := c.storeHalfWord(address, hw)
-
-	if !success {
-		c.DumpRegisters()
-		panic("SH failed")
-	}
+	c.storeHalfWord(address, hw)
 }
 
 // store word
@@ -447,12 +476,7 @@ func (c *Core) sw(inst uint32) {
 
 	address := offset + c.reg[rs1]
 
-	success := c.storeWord(address, c.reg[rs2])
-
-	if !success {
-		// c.DumpRegisters()
-		// panic("SW failed")
-	}
+	c.storeWord(address, c.reg[rs2])
 }
 
 // fence
@@ -484,10 +508,12 @@ func (c *Core) fence(inst uint32) {
 
 // environment call
 func (c *Core) ecall(inst uint32) {
+	// TODO Do I have to set mtval here?
 	c.trap(TrapEcallUMode)
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
+	// TODO Do I have to set mtval here?
 	c.trap(TrapBreakpoint)
 }
