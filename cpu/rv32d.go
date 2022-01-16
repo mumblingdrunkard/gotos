@@ -147,7 +147,7 @@ func (c *Core) fsqrt_d(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 	}
 
@@ -252,12 +252,12 @@ func (c *Core) feq_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -277,12 +277,12 @@ func (c *Core) flt_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -302,12 +302,12 @@ func (c *Core) fle_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -322,7 +322,7 @@ func (c *Core) fclass_d(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f // source fp register
 
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 	}
 

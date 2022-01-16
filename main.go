@@ -34,22 +34,25 @@ func main() {
 	// It is possible that the stack for core4 could flow into the stack of core3 without causing an error.
 	// For now, we just assume/hope this doesn't happen.
 	// More advanced memory sharing techniques are required for this.
-
 	rs := cpu.NewReservationSets(4)
 
 	core0 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 0)
+	core0.SetBootHandler(system.SystemStartup)
 	core0.SetTrapHandler(system.TrapHandler)
 	core0.UnsafeSetMemSize(1024 * 1024 * 1)
 
 	core1 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 1)
+	core1.SetBootHandler(system.SystemStartup)
 	core1.SetTrapHandler(system.TrapHandler)
 	core1.UnsafeSetMemSize(1024 * 1024 * 2)
 
 	core2 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 2)
+	core2.SetBootHandler(system.SystemStartup)
 	core2.SetTrapHandler(system.TrapHandler)
 	core2.UnsafeSetMemSize(1024 * 1024 * 3)
 
 	core3 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 3)
+	core3.SetBootHandler(system.SystemStartup)
 	core3.SetTrapHandler(system.TrapHandler)
 	core3.UnsafeSetMemSize(1024 * 1024 * 4)
 

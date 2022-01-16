@@ -7,51 +7,46 @@ import (
 )
 
 const (
-	XLEN  = 32
-	MXLEN = 32
-)
-
-const (
-	CoreStateRunning = 2 // Core is running and executing instructions
-	CoreStateHalting = 1 // Core is running and executing instructions, but will turn off in the next cycle
-	CoreStateHalted  = 0 // Core is halted and will stay halted until Start() is called
+	coreStateRunning = 2 // Core is running and executing instructions
+	coreStateHalting = 1 // Core is running and executing instructions, but will turn off in the next cycle
+	coreStateHalted  = 0 // Core is halted and will stay halted until Start() is called
 )
 
 // Register mnemonics
 const (
-	RegZero = 0  // Hard-wired zero
-	RegRA   = 1  // Return address
-	RegSP   = 2  // Stack pointer
-	RegGP   = 3  // Global pointer
-	RegTP   = 4  // Thread pointer
-	RegT0   = 5  // Temporary/alternate link register
-	RegT1   = 6  // Temporaries
-	RegT2   = 7  //
-	RegS0   = 8  // Saved register/frame pointer
-	RegFP   = 8  //
-	RegS1   = 9  // Saved register
-	RegA0   = 10 // Function arguments/return values
-	RegA1   = 11 //
-	RegA2   = 12 //
-	RegA3   = 13 //
-	RegA4   = 14 //
-	RegA5   = 15 //
-	RegA6   = 16 //
-	RegA7   = 17 //
-	RegS2   = 18 // Saved registers
-	RegS3   = 19 //
-	RegS4   = 20 //
-	RegS5   = 21 //
-	RegS6   = 22 //
-	RegS7   = 23 //
-	RegS8   = 24 //
-	RegS9   = 25 //
-	RegS10  = 26 //
-	RegS11  = 27 //
-	RegT3   = 28 // Temporaries
-	RegT4   = 29 //
-	RegT5   = 30 //
-	RegT6   = 31 //
+	Reg_ZERO = 0  // Hard-wired zero
+	Reg_RA   = 1  // Return address
+	Reg_SP   = 2  // Stack pointer
+	Reg_GP   = 3  // Global pointer
+	Reg_TP   = 4  // Thread pointer
+	Reg_T0   = 5  // Temporary/alternate link register
+	Reg_T1   = 6  // Temporaries
+	Reg_T2   = 7  //
+	Reg_S0   = 8  // Saved register/frame pointer
+	Reg_FP   = 8  //
+	Reg_S1   = 9  // Saved register
+	Reg_A0   = 10 // Function arguments/return values
+	Reg_A1   = 11 //
+	Reg_A2   = 12 //
+	Reg_A3   = 13 //
+	Reg_A4   = 14 //
+	Reg_A5   = 15 //
+	Reg_A6   = 16 //
+	Reg_A7   = 17 //
+	Reg_S2   = 18 // Saved registers
+	Reg_S3   = 19 //
+	Reg_S4   = 20 //
+	Reg_S5   = 21 //
+	Reg_S6   = 22 //
+	Reg_S7   = 23 //
+	Reg_S8   = 24 //
+	Reg_S9   = 25 //
+	Reg_S10  = 26 //
+	Reg_S11  = 27 //
+	Reg_T3   = 28 // Temporaries
+	Reg_T4   = 29 //
+	Reg_T5   = 30 //
+	Reg_T6   = 31 //
 )
 
 const (
@@ -59,67 +54,58 @@ const (
 	EndianBig           = 1
 )
 
+type counter struct {
+	enable bool
+	value  uint64
+}
+
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
 	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
-	bcm     sync.Mutex
-	state   atomic.Value // can be HALTED, HALTING, or RUNNING
-	jumped  bool
-	retired uint64       // number of instructions executed/retired
-	reg     [32]uint32   // normal registers
-	csr     [4096]uint32 // control and status registers
-	freg    [32]uint64   // fp registers
-	pc      uint32       // program counter
-	mc      memoryController
-	trapFn  func(*Core)
-	mhartid uint32
-	mtval   uint32 // should be set before a trap when certain faults occur
-	mcause  uint32
-	mepc    uint32
+	bcm    sync.Mutex
+	state  atomic.Value // can be HALTED, HALTING, or RUNNING
+	jumped bool
+	mc     memoryController
+	// normal registers (save on context switch)
+	reg  [32]uint32 // normal registers
+	freg [32]uint64 // fp registers
+	pc   uint32     // program counter
+	// CSRs
+	csr [4096]uint32 // control and status registers
+	// function pointers
+	trapFn func(*Core)
+	bootFn func(*Core)
+	// counters, used for predictable scheduling
+	counter counter
+	// timers?
+	// miscellaneous
+	retired uint64 // number of instructions executed/retired
 }
 
 func (c *Core) fetch() (bool, uint32) {
-	success, inst := c.loadInstruction(c.pc)
-
-	if !success {
-		return false, 0
-	}
-
-	return true, inst
-}
-
-func (c *Core) UnsafeSetMemBase(base uint32) {
-	c.mc.mmu.base = base
-}
-
-func (c *Core) UnsafeSetMemSize(size uint32) {
-	c.mc.mmu.size = size
-	c.reg[2] = c.mc.mmu.size
+	return c.loadInstruction(c.pc)
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
 	c.bcm.Lock()
 
 	// Start running core in loop
-	if !c.state.CompareAndSwap(CoreStateHalted, CoreStateRunning) {
+	if !c.state.CompareAndSwap(coreStateHalted, coreStateRunning) {
 		panic("Attempted to call `run(...)` on a core that was not in the HALTED state")
 	}
+
+	c.bootFn(c)
 
 	wg.Done() // core has switched to running state
 
 	for {
 		// Test if state is HALTING, swap to HALTED if so, then break
 		// CompareAndSwap makes this very slow so we use Load instead
-		if c.state.Load() == CoreStateHalting {
-			c.state.Store(CoreStateHalted)
+		if c.state.Load() == coreStateHalting {
+			c.state.Store(coreStateHalted)
 			break
 		}
-
-		// CAS alternative (-20% performance hit)
-		// if c.state.CompareAndSwap(CoreStateHalting, CoreStateHalted) {
-		// 	break
-		// }
 
 		c.UnsafeStep()
 	}
@@ -166,11 +152,11 @@ func (c *Core) UnsafeReset() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndWait() {
-	if c.state.Load() == CoreStateHalted {
+	if c.state.Load() == coreStateHalted {
 		return
 	}
 
-	if !c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting) {
+	if !c.state.CompareAndSwap(coreStateRunning, coreStateHalting) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -183,7 +169,7 @@ func (c *Core) HaltAndWait() {
 // con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
 //   This is an acceptable solution.
 func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if !c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting) {
+	if !c.state.CompareAndSwap(coreStateRunning, coreStateHalting) {
 		panic("Attempted to halt core that was not in RUNNING state")
 	}
 
@@ -195,16 +181,25 @@ func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
 }
 
 func (c *Core) HaltIfRunning() bool {
-	return c.state.CompareAndSwap(CoreStateRunning, CoreStateHalting)
+	return c.state.CompareAndSwap(coreStateRunning, coreStateHalting)
 }
 
 func (c *Core) UnsafeStep() {
-	// TODO:  interrupts
-	success, inst := c.fetch()
+	// Interrupts
+	if c.counter.enable {
+		if c.counter.value == 0 {
+			c.trap(TrapMachineTimerInterrupt)
+			return
+		}
+		c.counter.value -= 1
+	}
 
+	success, inst := c.fetch()
 	if success {
 		c.execute(inst)
 		c.retired += 1
+	} else {
+		return // retry the fetch next time
 	}
 
 	// Only increment pc if the processor did not trap or perform a jump
@@ -220,12 +215,13 @@ func (c *Core) UnsafeStep() {
 
 func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint32) (c Core) {
 	c = Core{
-		mhartid: id,
 		retired: 0,
 		mc:      newMemoryController(m, rs),
 	}
 
-	c.state.Store(CoreStateHalted)
+	c.csr[Csr_MHARTID] = id
+
+	c.state.Store(coreStateHalted)
 
 	c.UnsafeReset()
 
@@ -234,14 +230,6 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint
 
 func (c *Core) InstructionsRetired() uint64 {
 	return c.retired
-}
-
-func (c *Core) Misses() uint64 {
-	return c.mc.misses
-}
-
-func (c *Core) Accesses() uint64 {
-	return c.mc.accesses
 }
 
 func (c *Core) State() interface{} {
@@ -254,6 +242,44 @@ func (c *Core) DumpRegisters() {
 	for i, r := range c.reg {
 		fmt.Printf("[%02d]: %08X\n", i, r)
 	}
+}
+
+// --- Getters and setters ---
+
+func (c *Core) GetIRegisters() [32]uint32 {
+	var a [32]uint32
+	copy(a[:], c.reg[:])
+	return a
+}
+
+func (c *Core) SetIRegisters(a [32]uint32) {
+	copy(c.reg[:], a[:])
+}
+
+func (c *Core) GetFRegisters() [32]uint64 {
+	var a [32]uint64
+	copy(a[:], c.freg[:])
+	return a
+}
+
+func (c *Core) SetFRegisters(a [32]uint64) {
+	copy(c.freg[:], a[:])
+}
+
+func (c *Core) GetCSR(number int) uint32 {
+	return c.csr[number]
+}
+
+func (c *Core) SetCSR(number int, val uint32) {
+	c.csr[number] = val
+}
+
+func (c *Core) GetPC() uint32 {
+	return c.pc
+}
+
+func (c *Core) SetPC(pc uint32) {
+	c.pc = pc
 }
 
 func (c *Core) GetIRegister(number int) uint32 {
@@ -273,29 +299,9 @@ func (c *Core) SetFRegister(number int, value uint64) {
 }
 
 func (c *Core) SetBootHandler(handler func(*Core)) {
-
+	c.bootFn = handler
 }
 
 func (c *Core) SetTrapHandler(handler func(*Core)) {
 	c.trapFn = handler
-}
-
-func (c *Core) SetPC(pc uint32) {
-	c.pc = pc
-}
-
-func (c *Core) MHARTID() uint32 {
-	return c.mhartid
-}
-
-func (c *Core) MCAUSE() uint32 {
-	return c.mcause
-}
-
-func (c *Core) MTVAL() uint32 {
-	return c.mtval
-}
-
-func (c *Core) MEPC() uint32 {
-	return c.mepc
 }

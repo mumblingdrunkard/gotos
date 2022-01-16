@@ -205,7 +205,7 @@ func (c *Core) jal(inst uint32) {
 
 	targetAddress := c.pc + offset
 	if targetAddress&0x3 != 0 {
-		c.mtval = targetAddress
+		c.csr[Csr_MTVAL] = targetAddress
 		c.trap(TrapInstructionAddressMisaligned)
 	} else {
 		c.reg[rd] = c.pc + 4
@@ -224,7 +224,7 @@ func (c *Core) jalr(inst uint32) {
 	targetAddress := (imm11_0 + rs1_val) & 0xfffffffe
 
 	if targetAddress&0x3 != 0 {
-		c.mtval = targetAddress
+		c.csr[Csr_MTVAL] = targetAddress
 		c.trap(TrapInstructionAddressMisaligned)
 	} else {
 		c.reg[rd] = c.pc + 4
@@ -247,7 +247,7 @@ func (c *Core) beq(inst uint32) {
 
 	if c.reg[rs1] == c.reg[rs2] {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress
@@ -271,7 +271,7 @@ func (c *Core) bne(inst uint32) {
 
 	if c.reg[rs1] != c.reg[rs2] {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress
@@ -294,7 +294,7 @@ func (c *Core) blt(inst uint32) {
 
 	if int32(c.reg[rs1]) < int32(c.reg[rs2]) {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress
@@ -317,7 +317,7 @@ func (c *Core) bltu(inst uint32) {
 
 	if c.reg[rs1] < c.reg[rs2] {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress
@@ -340,7 +340,7 @@ func (c *Core) bge(inst uint32) {
 
 	if int32(c.reg[rs1]) >= int32(c.reg[rs2]) {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress
@@ -363,7 +363,7 @@ func (c *Core) bgeu(inst uint32) {
 
 	if c.reg[rs1] >= c.reg[rs2] {
 		if targetAddress&0x3 != 0 {
-			c.mtval = targetAddress
+			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 		} else {
 			c.pc = targetAddress

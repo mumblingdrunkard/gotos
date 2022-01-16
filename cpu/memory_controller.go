@@ -44,25 +44,25 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagExec == 0 { // physical address is not marked executable
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAccessFault)
 		return false, 0
 	}
 
 	if pAddr&0x3 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAddressMisaligned)
 		return false, 0
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionPageFault)
 		return false, 0
 	}
@@ -88,25 +88,19 @@ func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagRead == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if !present { // possible page fault
-		// TODO
-		// When a page fault trap happens, nothing should happen to processor state.
-		// Rather, the page should be fetched and loaded and the instruction should be retried.
-		// TODO
-		// Figure out how to transmit extra info upon certain traps such as PageFaults.
-		// Additional information needs to be available to handle this kind of trap.
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
@@ -129,13 +123,13 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagRead == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
@@ -144,13 +138,13 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 		// TODO
 		// When a page fault trap happens, nothing should happen to processor state.
 		// Rather, the page should be fetched and loaded and the instruction should be retried.
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
 
 	if pAddr&0x1 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
@@ -173,13 +167,13 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagRead == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
@@ -188,13 +182,13 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 		// TODO
 		// When a page fault trap happens, nothing should happen to processor state.
 		// Rather, the page should be fetched and loaded and the instruction should be retried.
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
 
 	if pAddr&0x3 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
@@ -217,13 +211,13 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagRead == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
@@ -232,13 +226,13 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 		// TODO
 		// When a page fault trap happens, nothing should happen to processor state.
 		// Rather, the page should be fetched and loaded and the instruction should be retried.
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
 
 	if pAddr&0x7 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
@@ -262,19 +256,19 @@ func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if flags&memFlagWrite == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStorePageFault)
 		return false
 	}
@@ -296,25 +290,25 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if flags&memFlagWrite == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStorePageFault)
 		return false
 	}
 
 	if pAddr&0x1 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
@@ -336,25 +330,25 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if flags&memFlagWrite == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStorePageFault)
 		return false
 	}
 
 	if pAddr&0x3 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
@@ -376,25 +370,25 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if flags&memFlagWrite == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStorePageFault)
 		return false
 	}
 
 	if pAddr&0x7 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
@@ -417,13 +411,13 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
 	if flags&memFlagRead == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
@@ -432,13 +426,13 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 		// TODO
 		// When a page fault trap happens, nothing should happen to processor state.
 		// Rather, the page should be fetched and loaded and the instruction should be retried.
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
 
 	if pAddr&0x3 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
@@ -463,25 +457,25 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if flags&memFlagWrite == 0 { // permissions
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
 		return false
 	}
 
 	if !present { // possible page fault
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStorePageFault)
 		return false
 	}
 
 	if pAddr&0x3 != 0 { // address alignment
-		c.mtval = vAddr
+		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
@@ -523,4 +517,12 @@ func (c *Core) invalidateInstructionCache() {
 func (c *Core) flushAndInvalidateCache() {
 	c.flushCache()
 	c.invalidateCache()
+}
+
+func (c *Core) Misses() uint64 {
+	return c.mc.misses
+}
+
+func (c *Core) Accesses() uint64 {
+	return c.mc.accesses
 }

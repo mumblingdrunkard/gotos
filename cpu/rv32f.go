@@ -12,38 +12,38 @@ import (
 
 // Mnemonics for Floating-Point registers
 const (
-	FRegFT0  = 0  // FP temporaries
-	FRegFT1  = 1  //
-	FRegFT2  = 2  //
-	FRegFT3  = 3  //
-	FRegFT4  = 4  //
-	FRegFT5  = 5  //
-	FRegFT6  = 6  //
-	FRegFT7  = 7  //
-	FRegFS0  = 8  // FP saved registers
-	FRegFS1  = 9  //
-	FRegFA0  = 10 // FP arguments/return values
-	FRegFA1  = 11 //
-	FRegFA2  = 12 // FP arguments
-	FRegFA3  = 13 //
-	FRegFA4  = 14 //
-	FRegFA5  = 15 //
-	FRegFA6  = 16 //
-	FRegFA7  = 17 //
-	FRegFS2  = 18 // FP saved registers
-	FRegFS3  = 19 //
-	FRegFS4  = 20 //
-	FRegFS5  = 21 //
-	FRegFS6  = 22 //
-	FRegFS7  = 23 //
-	FRegFS8  = 24 //
-	FRegFS9  = 25 //
-	FRegFS10 = 26 //
-	FRegFS11 = 27 //
-	FRegFT8  = 28 // FP temporaries
-	FRegFT9  = 29 //
-	FRegFT10 = 30 //
-	FRegFT11 = 31 //
+	FReg_FT0  = 0  // FP temporaries
+	FReg_FT1  = 1  //
+	FReg_FT2  = 2  //
+	FReg_FT3  = 3  //
+	FReg_FT4  = 4  //
+	FReg_FT5  = 5  //
+	FReg_FT6  = 6  //
+	FReg_FT7  = 7  //
+	FReg_FS0  = 8  // FP saved registers
+	FReg_FS1  = 9  //
+	FReg_FA0  = 10 // FP arguments/return values
+	FReg_FA1  = 11 //
+	FReg_FA2  = 12 // FP arguments
+	FReg_FA3  = 13 //
+	FReg_FA4  = 14 //
+	FReg_FA5  = 15 //
+	FReg_FA6  = 16 //
+	FReg_FA7  = 17 //
+	FReg_FS2  = 18 // FP saved registers
+	FReg_FS3  = 19 //
+	FReg_FS4  = 20 //
+	FReg_FS5  = 21 //
+	FReg_FS6  = 22 //
+	FReg_FS7  = 23 //
+	FReg_FS8  = 24 //
+	FReg_FS9  = 25 //
+	FReg_FS10 = 26 //
+	FReg_FS11 = 27 //
+	FReg_FT8  = 28 // FP temporaries
+	FReg_FT9  = 29 //
+	FReg_FT10 = 30 //
+	FReg_FT11 = 31 //
 )
 
 const (
@@ -198,7 +198,7 @@ func (c *Core) fsqrt_s(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}
@@ -299,14 +299,14 @@ func (c *Core) fmv_x_w(inst uint32) {
 
 	rs2 := (inst >> 20) & 0x1f // source fp register
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}
 
 	rm := (inst >> 12) & 0x7
 	if rm != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}
@@ -325,7 +325,7 @@ func (c *Core) feq_s(inst uint32) {
 	// quiet comparison, only signal if either input is signaling
 	if math.IsNaN(float64(f1)) {
 		if c.freg[rs1]&0x00400000 != 0x00400000 { // it's a signaling NaN
-			c.csr[csr_FCSR] |= fcsrFlagNV
+			c.csr[Csr_FCSR] |= fcsrFlagNV
 		}
 		c.reg[rd] = 0
 		return
@@ -333,7 +333,7 @@ func (c *Core) feq_s(inst uint32) {
 
 	if math.IsNaN(float64(f2)) {
 		if c.freg[rs2]&0x00400000 != 0x00400000 { // it's a signaling NaN
-			c.csr[csr_FCSR] |= fcsrFlagNV
+			c.csr[Csr_FCSR] |= fcsrFlagNV
 		}
 		c.reg[rd] = 0
 		return
@@ -355,13 +355,13 @@ func (c *Core) flt_s(inst uint32) {
 	f2 := math.Float32frombits(uint32(c.freg[rs2]))
 
 	if math.IsNaN(float64(f1)) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
 
 	if math.IsNaN(float64(f2)) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
@@ -382,13 +382,13 @@ func (c *Core) fle_s(inst uint32) {
 	f2 := math.Float32frombits(uint32(c.freg[rs2]))
 
 	if math.IsNaN(float64(f1)) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
 
 	if math.IsNaN(float64(f2)) {
-		c.csr[csr_FCSR] |= fcsrFlagNV
+		c.csr[Csr_FCSR] |= fcsrFlagNV
 		c.reg[rd] = 0
 		return
 	}
@@ -406,7 +406,7 @@ func (c *Core) fclass_s(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f // source fp register
 
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}
@@ -460,14 +460,14 @@ func (c *Core) fmv_w_x(inst uint32) {
 
 	rs2 := (inst >> 20) & 0x1f // source fp register
 	if rs2 != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}
 
 	rm := (inst >> 12) & 0x7
 	if rm != 0 {
-		c.mtval = inst
+		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
 		return
 	}

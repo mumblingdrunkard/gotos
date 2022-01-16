@@ -51,7 +51,7 @@ func (c *Core) lr_w(inst uint32) {
 	}
 	c.mc.mem.Unlock()
 	if success {
-		m := c.mc.rsets.lookup[c.mhartid]
+		m := c.mc.rsets.lookup[c.csr[Csr_MHARTID]]
 		(*m)[pAddr] = true
 	}
 	c.mc.rsets.Unlock()
@@ -69,7 +69,7 @@ func (c *Core) sc_w(inst uint32) {
 
 	c.mc.rsets.Lock()
 	// check rset
-	if _, ok := (*c.mc.rsets.lookup[c.mhartid])[pAddr]; ok {
+	if _, ok := (*c.mc.rsets.lookup[c.csr[Csr_MHARTID]])[pAddr]; ok {
 		c.mc.mem.Lock()
 		success := c.unsafeStoreThroughWord(addr, c.reg[rs2])
 		c.mc.mem.Unlock()
@@ -87,7 +87,7 @@ func (c *Core) sc_w(inst uint32) {
 	}
 
 	// Regardless of success or failure, executing an SC.W instruction invalidates any reservation held by this hart.
-	delete(*c.mc.rsets.lookup[c.mhartid], pAddr)
+	delete(*c.mc.rsets.lookup[c.csr[Csr_MHARTID]], pAddr)
 	c.mc.rsets.Unlock()
 }
 
