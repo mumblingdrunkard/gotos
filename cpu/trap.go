@@ -20,10 +20,10 @@ const (
 	TrapInstructionAccessFault              = 0x00000001 // kill
 	TrapIllegalInstruction                  = 0x00000002 // kill
 	TrapBreakpoint                          = 0x00000003 // continue (software)
-	TrapLoadAddressMisaligned               = 0x00000004 // handle (hardware?)
+	TrapLoadAddressMisaligned               = 0x00000004 // kill
 	TrapLoadAccessFault                     = 0x00000005 // kill
-	TrapStoreAddressMisaligned              = 0x00000006 // handle (hardware?)
-	TrapStoreAccessFault                    = 0x00000007 // kill
+	TrapStoreAddressMisaligned              = 0x00000006 // kill
+	TrapStoreAccessFault                    = 0x00000007 // handle (might be the stack is too small)
 	TrapEcallUMode                          = 0x00000008 // handle (software)
 	// TrapEcallHSMode = 0x00000009 // not used
 	// TrapEcallVSMode = 0x0000000A // not used
