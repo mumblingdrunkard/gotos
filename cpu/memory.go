@@ -18,7 +18,6 @@ type Memory struct {
 	endian Endian
 }
 
-// Return the byte stored at
 // Write len(data) number of bytes into m.data from offset and out
 func (m *Memory) Write(address uint32, data []uint8) (error, int) {
 	m.Lock()
