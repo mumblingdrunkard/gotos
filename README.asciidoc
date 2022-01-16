@@ -20,7 +20,7 @@ The CPU runs exclusively in User/Application Mode see _The RISC-V Instruction Se
 
 ==== riscv32g target
 
-- [ ] RV32I base instructions (38/40)
+- [*] RV32I base instructions (40/40)
 - [*] RV32M extension (8/8)
 - [*] RV32A extension (11/11)
 - [*] RV32F extension (26/26) non-compliant
@@ -67,7 +67,9 @@ RISC-V has multiple atomic operations, check out the A extension in the RISC-V s
 
 == Fun jobs that need doing
 
-- [ ] Fully define the system interface
+- [ ] Fully define the system interface (RISC-V EEI)
+
+- [ ] Write an ELF parser to load programs (look at `debug/elf`)
 
 - [ ] Define a framework for the process labs
 
