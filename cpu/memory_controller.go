@@ -135,9 +135,6 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 	}
 
 	if !present { // possible page fault
-		// TODO
-		// When a page fault trap happens, nothing should happen to processor state.
-		// Rather, the page should be fetched and loaded and the instruction should be retried.
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
@@ -147,6 +144,17 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
+
+		// --- Example for how misaligned load may be handled in hardware ---
+		// c.mc.mem.Lock()
+		// var hw uint16
+		// if c.mc.mem.endian == EndianBig {
+		// 	hw = binary.BigEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2])
+		// } else {
+		// 	hw = binary.LittleEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2])
+		// }
+		// c.mc.mem.Unlock()
+		// return true, hw
 	}
 
 	if hit, hw := c.mc.dCache.loadHalfWord(pAddr); !hit {
@@ -179,9 +187,6 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 	}
 
 	if !present { // possible page fault
-		// TODO
-		// When a page fault trap happens, nothing should happen to processor state.
-		// Rather, the page should be fetched and loaded and the instruction should be retried.
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
@@ -223,9 +228,6 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 	}
 
 	if !present { // possible page fault
-		// TODO
-		// When a page fault trap happens, nothing should happen to processor state.
-		// Rather, the page should be fetched and loaded and the instruction should be retried.
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
@@ -423,9 +425,6 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	}
 
 	if !present { // possible page fault
-		// TODO
-		// When a page fault trap happens, nothing should happen to processor state.
-		// Rather, the page should be fetched and loaded and the instruction should be retried.
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadPageFault)
 		return false, 0
@@ -443,9 +442,6 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	} else {
 		value = binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
 	}
-	// TODO: Verify the integrity of this
-	// store loaded value into cache if it's cached
-	// should the entire cache line just be invalidated instead perhaps?
 	c.mc.dCache.storeWordNoDirty(pAddr, value)
 
 	return true, value
