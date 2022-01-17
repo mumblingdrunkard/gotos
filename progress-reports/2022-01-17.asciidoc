@@ -29,6 +29,7 @@
 
 - An ELF loader seems to be necessary for easy loading of applications.
   The different segments could be extracted and placed into different parts of the process' address space.
+  `debug/elf` has some nice helpers to deal with ELF-files.
 
 - Many different exceptions could terminate the currently running process and signal the scheduler to do something about it; need to create a unified interface for this without too much clutter.
 
