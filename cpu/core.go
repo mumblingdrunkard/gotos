@@ -188,6 +188,7 @@ func (c *Core) UnsafeStep() {
 	// Interrupts
 	if c.counter.enable {
 		if c.counter.value == 0 {
+			c.counter.enable = false
 			c.trap(TrapMachineTimerInterrupt)
 			return
 		}
@@ -246,26 +247,6 @@ func (c *Core) DumpRegisters() {
 
 // --- Getters and setters ---
 
-func (c *Core) GetIRegisters() [32]uint32 {
-	var a [32]uint32
-	copy(a[:], c.reg[:])
-	return a
-}
-
-func (c *Core) SetIRegisters(a [32]uint32) {
-	copy(c.reg[:], a[:])
-}
-
-func (c *Core) GetFRegisters() [32]uint64 {
-	var a [32]uint64
-	copy(a[:], c.freg[:])
-	return a
-}
-
-func (c *Core) SetFRegisters(a [32]uint64) {
-	copy(c.freg[:], a[:])
-}
-
 func (c *Core) GetCSR(number int) uint32 {
 	return c.csr[number]
 }
@@ -274,6 +255,8 @@ func (c *Core) SetCSR(number int, val uint32) {
 	c.csr[number] = val
 }
 
+// TODO/WARNING: should perhaps not be provided as a "real" trap would mangle the pc.
+// Use MEPC instead.
 func (c *Core) GetPC() uint32 {
 	return c.pc
 }
@@ -296,6 +279,26 @@ func (c *Core) GetFRegister(number int) uint64 {
 
 func (c *Core) SetFRegister(number int, value uint64) {
 	c.freg[number] = value
+}
+
+func (c *Core) GetIRegisters() [32]uint32 {
+	var a [32]uint32
+	copy(a[:], c.reg[:])
+	return a
+}
+
+func (c *Core) SetIRegisters(a [32]uint32) {
+	copy(c.reg[:], a[:])
+}
+
+func (c *Core) GetFRegisters() [32]uint64 {
+	var a [32]uint64
+	copy(a[:], c.freg[:])
+	return a
+}
+
+func (c *Core) SetFRegisters(a [32]uint64) {
+	copy(c.freg[:], a[:])
 }
 
 func (c *Core) SetBootHandler(handler func(*Core)) {
