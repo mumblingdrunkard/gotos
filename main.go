@@ -68,23 +68,27 @@ func main() {
 	core2.Wait()
 	core3.Wait()
 
+	core0.DumpRegisters()
+	fmt.Println("Performance statistics:")
 	fmt.Printf("\ncore0: %d cycles\n", core0.InstructionsRetired())
 	fmt.Printf("core0: %d misses\n", core0.Misses())
 	fmt.Printf("core0: %d accesses\n", core0.Accesses())
-	core0.DumpRegisters()
 
+	core1.DumpRegisters()
+	fmt.Println("Performance statistics:")
 	fmt.Printf("\ncore1: %d cycles\n", core1.InstructionsRetired())
 	fmt.Printf("core1: %d misses\n", core1.Misses())
 	fmt.Printf("core1: %d accesses\n", core1.Accesses())
-	core1.DumpRegisters()
 
+	core2.DumpRegisters()
+	fmt.Println("Performance statistics:")
 	fmt.Printf("\ncore2: %d cycles\n", core2.InstructionsRetired())
 	fmt.Printf("core2: %d misses\n", core2.Misses())
 	fmt.Printf("core2: %d accesses\n", core2.Accesses())
-	core2.DumpRegisters()
 
+	core3.DumpRegisters()
+	fmt.Println("Performance statistics:")
 	fmt.Printf("\ncore3: %d cycles\n", core3.InstructionsRetired())
 	fmt.Printf("core3: %d misses\n", core3.Misses())
 	fmt.Printf("core3: %d accesses\n", core3.Accesses())
-	core3.DumpRegisters()
 }
