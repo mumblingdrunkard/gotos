@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 )
@@ -80,7 +81,6 @@ type Core struct {
 	counter counter
 	// timers?
 	// miscellaneous
-	retired uint64 // number of instructions executed/retired
 }
 
 func (c *Core) fetch() (bool, uint32) {
@@ -185,6 +185,13 @@ func (c *Core) HaltIfRunning() bool {
 }
 
 func (c *Core) UnsafeStep() {
+	// always increment cycle counter
+	// theoretically never overflows
+	cycle := uint64(c.csr[Csr_CYCLE]) | (uint64(c.csr[Csr_CYCLEH]) << 32)
+	cycle += 1
+	c.csr[Csr_CYCLE] = uint32(cycle)
+	c.csr[Csr_CYCLEH] = uint32(cycle >> 32)
+
 	// Interrupts
 	if c.counter.enable {
 		if c.counter.value == 0 {
@@ -198,7 +205,11 @@ func (c *Core) UnsafeStep() {
 	success, inst := c.fetch()
 	if success {
 		c.execute(inst)
-		c.retired += 1
+		// TODO: execute may fail, don't increment retired
+		retired := uint64(c.csr[Csr_INSTRET]) | (uint64(c.csr[Csr_INSTRETH]) << 32)
+		retired += 1
+		c.csr[Csr_INSTRET] = uint32(retired)
+		c.csr[Csr_INSTRETH] = uint32(retired >> 32)
 	} else {
 		return // retry the fetch next time
 	}
@@ -216,8 +227,7 @@ func (c *Core) UnsafeStep() {
 
 func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint32) (c Core) {
 	c = Core{
-		retired: 0,
-		mc:      newMemoryController(m, rs),
+		mc: newMemoryController(m, rs),
 	}
 
 	c.csr[Csr_MHARTID] = id
@@ -230,7 +240,8 @@ func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint
 }
 
 func (c *Core) InstructionsRetired() uint64 {
-	return c.retired
+	retired := uint64(c.csr[Csr_INSTRET]) | (uint64(c.csr[Csr_INSTRETH]) << 32)
+	return retired
 }
 
 func (c *Core) State() interface{} {
@@ -238,10 +249,21 @@ func (c *Core) State() interface{} {
 }
 
 func (c *Core) DumpRegisters() {
-	fmt.Println("Register dump")
+	fmt.Printf("\n=== Register dump for core %d ===\n", c.csr[Csr_MHARTID])
 	fmt.Printf("pc: %X\n", c.pc)
+
+	fmt.Println("Integer registers")
 	for i, r := range c.reg {
 		fmt.Printf("[%02d]: %08X\n", i, r)
+	}
+
+	// Dump all floating point registers
+	// Prints the HEX value as well as the f32 and f64 interpretation of that value
+	fmt.Println("Floating-point registers")
+	for i, r := range c.freg {
+		f := math.Float32frombits(uint32(r))
+		d := math.Float64frombits(r)
+		fmt.Printf("[%02d]: %016X\t%f\t%f\n", i, r, f, d)
 	}
 }
 
