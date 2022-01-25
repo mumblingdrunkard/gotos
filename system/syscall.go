@@ -16,7 +16,7 @@ func syscall(c *cpu.Core, number uint32) {
 	case sys_exit:
 		sysExit(c)
 	case sys_id:
-		coreID(c)
+		sysId(c)
 	}
 }
 
@@ -28,7 +28,7 @@ func sysExit(c *cpu.Core) {
 	c.HaltIfRunning()
 }
 
-func coreID(c *cpu.Core) {
+func sysId(c *cpu.Core) {
 	c.SetIRegister(cpu.Reg_A0, c.GetCSR(cpu.Csr_MHARTID))
 	// return to program
 	// This is done by setting the pc to the address *after* the one that caused the trap
