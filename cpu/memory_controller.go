@@ -41,7 +41,7 @@ func newMemoryController(m *Memory, rs *ReservationSets) memoryController {
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	var inst uint32
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -85,7 +85,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 // Return the byte stored at
 func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -120,7 +120,7 @@ func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 
 func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -172,7 +172,7 @@ func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
 
 func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -213,7 +213,7 @@ func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
 
 func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -255,7 +255,7 @@ func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
 // Return the byte stored at
 func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -289,7 +289,7 @@ func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 
 func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -329,7 +329,7 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 
 func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -369,7 +369,7 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 
 func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -410,7 +410,7 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 // Loads a memory straight from memory, bypassing the cache.
 func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -450,7 +450,7 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 // Stores a word straight to memory, bypassing cache.
 func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	c.mc.accesses++
-	valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
+	_, valid, present, pAddr, flags := c.mc.mmu.translateAndCheck(vAddr)
 
 	if !valid { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -492,27 +492,27 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	return true
 }
 
-// Flushes the data cache to memory
-func (c *Core) flushCache() {
+// Writes the data cache to memory
+func (c *Core) cacheWriteback() {
 	c.mc.mem.Lock()
-	c.mc.dCache.flushAll(c.mc.mem.data[:])
+	c.mc.dCache.writebackAll(c.mc.mem.data[:])
 	c.mc.mem.Unlock()
 }
 
 // Invalidates the data cache
-func (c *Core) invalidateCache() {
+func (c *Core) cacheInvalidate() {
 	c.mc.dCache.invalidateAll()
 }
 
 // Invalidates the instruction cache
-func (c *Core) invalidateInstructionCache() {
+func (c *Core) instructionCacheInvalidate() {
 	c.mc.iCache.invalidateAll()
 }
 
-// Flush and invalidate the data cache
-func (c *Core) flushAndInvalidateCache() {
-	c.flushCache()
-	c.invalidateCache()
+// Writeback and invalidate the data cache
+func (c *Core) cacheWritebackAndInvalidate() {
+	c.cacheWriteback()
+	c.cacheInvalidate()
 }
 
 func (c *Core) Misses() uint64 {

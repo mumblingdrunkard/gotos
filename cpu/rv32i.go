@@ -483,7 +483,7 @@ func (c *Core) sw(inst uint32) {
 func (c *Core) fence(inst uint32) {
 	// I think this should flush the cache?
 	// Will need some input from an expert or something.
-	c.flushAndInvalidateCache()
+	c.cacheWritebackAndInvalidate()
 
 	// This ensures no memory operations from this hart can be observed before any memory operation that comes after the FENCE.
 

@@ -2,6 +2,10 @@
 // Caching helps reduce lock contention when multiple processors are running.
 // This introduces the problem of cache coherence, which is creatively solved in other ways.
 
+// WARNING: man physically addressed caches really suck when they may be written back
+// May have to store virtual line numbers as well and translate to physical address before writing back
+// This may cause several cache misses.
+
 package cpu
 
 import (
@@ -241,7 +245,7 @@ func (c *cache) storeWordNoDirty(address uint32, w uint32) bool {
 //
 // If the cache is full and the cache-line is not present, selects a random line
 // to be evicted.
-// If this line is dirty, the line is first flushed (written back to `src`) before
+// If this line is dirty, the line is first written back before
 // it is replaced with the new data.
 //
 // Returns true if a replacement/refresh was performed, false otherwise.
@@ -273,7 +277,7 @@ func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	address := eject.number << cacheLineOffsetBits
 	delete(c.lookup, eject.number) // delete the old entry, no-op if there is no old entry
 
-	// check if it's dirty, if so, flush
+	// check if it's dirty, if so, writeback
 	if eject.flags&cacheFlagDirty != 0 {
 		copy(src[address:], eject.data[:])
 	}
@@ -290,24 +294,23 @@ func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	return true
 }
 
-// Flushes all cache-lines back to `src`.
+// Writes back all cache-lines back to `dst`.
 // Helpful if you want all other cores to see changes made by this core.
-func (c *cache) flushAll(src []uint8) int {
-	flushed := 0
+func (c *cache) writebackAll(dst []uint8) int {
+	written := 0
 	for i := range c.lines {
 		line := &c.lines[i]
 
 		// check if it's dirty, if so, flush
-		// if the cache isn't full, this shouldn'd be dirty
 		if line.flags&cacheFlagDirty != 0 {
 			address := line.number << cacheLineOffsetBits
-			copy(src[address:], line.data[:])
-			flushed += 1
+			copy(dst[address:], line.data[:])
+			written += 1
 			// clear the dirty bit
 			line.flags &= (cacheFlagDirty ^ cacheFlagAll)
 		}
 	}
-	return flushed
+	return written
 }
 
 // Marks all cache-lines as stale.

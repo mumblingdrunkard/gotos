@@ -27,6 +27,14 @@ const (
 // Might even do well with just a single segment at first, then two, then four, etc. etc..
 //
 
+type segment struct {
+	base      uint32
+	size      uint32
+	allocated uint32
+	flags     uint8
+	backwards bool
+}
+
 type mmu struct {
 	base uint32
 	size uint32
@@ -36,11 +44,11 @@ type mmu struct {
 // This method should return (false, false, 0, 0) when the address is invalid
 // If a translation is valid, but the page is missing (when paging is implemented), the function should return (true, false, vAddr, flags)
 // If a translation is valid and the page is present, the function should return (true, true, vAddr, flags)
-func (m *mmu) translateAndCheck(vAddr uint32) (valid bool, present bool, pAddr uint32, flags uint8) {
+func (m *mmu) translateAndCheck(vAddr uint32) (hit, valid, present bool, pAddr uint32, flags uint8) {
 	if pAddr >= m.size {
-		return false, false, 0, 0
+		return true, false, false, 0, 0
 	}
-	return true, true, vAddr + m.base, memFlagRead | memFlagWrite | memFlagExec
+	return true, true, true, vAddr + m.base, memFlagRead | memFlagWrite | memFlagExec
 }
 
 func newMMU() mmu {
