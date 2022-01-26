@@ -211,7 +211,7 @@ func (c *Core) UnsafeStep() {
 		c.csr[Csr_INSTRET] = uint32(retired)
 		c.csr[Csr_INSTRETH] = uint32(retired >> 32)
 	} else {
-		return // retry the fetch next time
+		return // retry the fetch in the next cycle/step
 	}
 
 	// Only increment pc if the processor did not trap or perform a jump
@@ -275,12 +275,6 @@ func (c *Core) GetCSR(number int) uint32 {
 
 func (c *Core) SetCSR(number int, val uint32) {
 	c.csr[number] = val
-}
-
-// TODO/WARNING: should perhaps not be provided as a "real" trap would mangle the pc.
-// Use MEPC instead.
-func (c *Core) GetPC() uint32 {
-	return c.pc
 }
 
 func (c *Core) SetPC(pc uint32) {
