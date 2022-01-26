@@ -48,7 +48,7 @@ type cache struct {
 // Attempts to load a byte (uint8) from cache.
 // If the cache line containing the byte is present and not marked stale, returns
 // (true, byte), oherwise (false, 0).
-func (c *cache) loadByte(address uint32) (present bool, byte uint8) {
+func (c *cache) loadByte(address uint32) (bool, uint8) {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
