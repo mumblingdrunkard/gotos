@@ -8,6 +8,16 @@ type ReservationSets struct {
 	lookup []*map[uint32]bool
 }
 
+func (rs *ReservationSets) unsafeInvalidateAll(addr uint32) {
+	for i := range rs.sets {
+		delete(*rs.lookup[i], addr)
+	}
+}
+
+func (rs *ReservationSets) unsafeInvalidate(set int, addr uint32) {
+	delete(*rs.lookup[set], addr)
+}
+
 func NewReservationSets(n int) (rs ReservationSets) {
 	rs = ReservationSets{
 		sets:   make([]map[uint32]bool, n),

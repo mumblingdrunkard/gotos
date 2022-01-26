@@ -75,11 +75,9 @@ func (c *Core) sc_w(inst uint32) {
 		c.mc.mem.Unlock()
 
 		if success {
-			// invalidate entries on all harts
 			c.reg[rd] = 0
-			for i := range c.mc.rsets.sets {
-				delete(*c.mc.rsets.lookup[i], pAddr)
-			}
+			// invalidate entries on all harts
+			c.mc.rsets.unsafeInvalidateAll(pAddr)
 		}
 	} else {
 		// failed
@@ -111,9 +109,7 @@ func (c *Core) amoswap_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -137,9 +133,7 @@ func (c *Core) amoadd_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LR in all cores
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -166,9 +160,7 @@ func (c *Core) amoand_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -193,9 +185,7 @@ func (c *Core) amoor_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -220,9 +210,7 @@ func (c *Core) amoxor_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -247,9 +235,7 @@ func (c *Core) amomax_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -274,9 +260,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -301,9 +285,7 @@ func (c *Core) amomin_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
 
@@ -328,8 +310,6 @@ func (c *Core) amominu_w(inst uint32) {
 	c.mc.mem.Unlock()
 
 	// Invalidate LRs
-	for i := range c.mc.rsets.sets {
-		delete(*c.mc.rsets.lookup[i], pAddr)
-	}
+	c.mc.rsets.unsafeInvalidateAll(pAddr)
 	c.mc.rsets.Unlock()
 }
