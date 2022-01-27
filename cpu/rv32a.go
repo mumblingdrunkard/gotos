@@ -40,7 +40,7 @@ func (c *Core) lr_w(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 
 	addr := c.reg[rs1]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	// update rset
 	c.mc.rsets.Lock()
@@ -64,7 +64,7 @@ func (c *Core) sc_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 	// TODO: Do usual checks
 
 	c.mc.rsets.Lock()
@@ -96,7 +96,7 @@ func (c *Core) amoswap_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -120,7 +120,7 @@ func (c *Core) amoadd_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -144,7 +144,7 @@ func (c *Core) amoand_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -171,7 +171,7 @@ func (c *Core) amoor_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -196,7 +196,7 @@ func (c *Core) amoxor_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -221,7 +221,7 @@ func (c *Core) amomax_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -246,7 +246,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -271,7 +271,7 @@ func (c *Core) amomin_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
@@ -296,7 +296,7 @@ func (c *Core) amominu_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, _, _, pAddr, _ := c.mc.mmu.translateAndCheck(addr)
+	_, pAddr, _ := c.translateAndCheck(addr)
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
