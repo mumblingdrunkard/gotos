@@ -45,6 +45,53 @@ type cache struct {
 	endian Endian
 }
 
+func (c *cache) load(address, width uint32) (bool, uint64) {
+	lineNumber := address >> cacheLineOffsetBits
+
+	// Misaligned load from cache will always fail
+	if address&(width-1) != 0 {
+		return false, 0
+	}
+
+	if line, present := c.lookup[lineNumber]; present {
+		if line.flags&cacheFlagStale != 0 {
+			return false, 0
+		}
+
+		offset := address & cacheLineOffsetMask
+
+		if width == 1 {
+			return true, uint64(line.data[offset])
+		}
+
+		if c.endian == EndianBig {
+			switch width {
+			case 2:
+				return true, uint64(binary.BigEndian.Uint16(line.data[offset : offset+2]))
+			case 4:
+				return true, uint64(binary.BigEndian.Uint32(line.data[offset : offset+4]))
+			case 8:
+				return true, binary.BigEndian.Uint64(line.data[offset : offset+8])
+			default:
+				panic("Invalid load width")
+			}
+		} else {
+			switch width {
+			case 2:
+				return true, uint64(binary.LittleEndian.Uint16(line.data[offset : offset+2]))
+			case 4:
+				return true, uint64(binary.LittleEndian.Uint32(line.data[offset : offset+4]))
+			case 8:
+				return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
+			default:
+				panic("Invalid load width")
+			}
+		}
+	}
+
+	return false, 0
+}
+
 // Attempts to load a byte (uint8) from cache.
 // If the cache line containing the byte is present and not marked stale, returns
 // (true, byte), oherwise (false, 0).

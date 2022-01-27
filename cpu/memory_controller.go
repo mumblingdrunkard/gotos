@@ -45,7 +45,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 
 	if flags&mmuFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapInstructionAccessFault)
+		c.trap(TrapInstructionPageFault)
 		return false, 0
 	}
 
@@ -58,12 +58,6 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	if pAddr&0x3 != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAddressMisaligned)
-		return false, 0
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapInstructionPageFault)
 		return false, 0
 	}
 
@@ -82,14 +76,14 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	return true, inst
 }
 
-// Return the byte stored at
-func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
+// loads up to 8 bytes
+func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	c.mc.accesses++
 	_, pAddr, flags := c.translateAndCheck(vAddr)
 
 	if flags&mmuFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
+		c.trap(TrapLoadPageFault)
 		return false, 0
 	}
 
@@ -99,160 +93,49 @@ func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 		return false, 0
 	}
 
-	if flags&mmuFlagPresent == 0 { // possible page fault
+	if pAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
+		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
 
-	if hit, b := c.mc.dCache.loadByte(pAddr); !hit {
+	if hit, v := c.mc.dCache.load(pAddr, width); !hit {
 		c.mc.misses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.mc.mem.Lock()
 		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 		c.mc.mem.Unlock()
-		_, b := c.mc.dCache.loadByte(pAddr)
-		return true, b
+		_, v := c.mc.dCache.load(pAddr, width)
+		return true, v
 	} else {
-		return true, b
+		return true, v
 	}
+}
+
+func (c *Core) store(vAddr, width uint32, v uint64) {
+}
+
+// Return the byte stored at
+func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
+	success, v := c.load(vAddr, 1)
+	return success, uint8(v)
 }
 
 func (c *Core) loadHalfWord(vAddr uint32) (bool, uint16) {
-	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
-
-	if flags&mmuFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagRead == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
-	if pAddr&0x1 != 0 { // address alignment
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAddressMisaligned)
-		return false, 0
-
-		// --- Example for how misaligned load may be handled in hardware ---
-		// c.mc.mem.Lock()
-		// var hw uint16
-		// if c.mc.mem.endian == EndianBig {
-		// 	hw = binary.BigEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2])
-		// } else {
-		// 	hw = binary.LittleEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2])
-		// }
-		// c.mc.mem.Unlock()
-		// return true, hw
-	}
-
-	if hit, hw := c.mc.dCache.loadHalfWord(pAddr); !hit {
-		c.mc.misses++
-		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
-		_, hw := c.mc.dCache.loadHalfWord(pAddr)
-		return true, hw
-	} else {
-		return true, hw
-	}
+	success, v := c.load(vAddr, 2)
+	return success, uint16(v)
 }
 
 func (c *Core) loadWord(vAddr uint32) (bool, uint32) {
-	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
-
-	if flags&mmuFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagRead == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
-	if pAddr&0x3 != 0 { // address alignment
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAddressMisaligned)
-		return false, 0
-	}
-
-	if hit, w := c.mc.dCache.loadWord(pAddr); !hit {
-		c.mc.misses++
-		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
-		_, w := c.mc.dCache.loadWord(pAddr)
-		return true, w
-	} else {
-		return true, w
-	}
+	success, v := c.load(vAddr, 4)
+	return success, uint32(v)
 }
 
 func (c *Core) loadDoubleWord(vAddr uint32) (bool, uint64) {
-	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
-
-	if flags&mmuFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagRead == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
-	if pAddr&0x7 != 0 { // address alignment
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAddressMisaligned)
-		return false, 0
-	}
-
-	if hit, dw := c.mc.dCache.loadDoubleWord(pAddr); !hit {
-		c.mc.misses++
-		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
-		_, dw := c.mc.dCache.loadDoubleWord(pAddr)
-		return true, dw
-	} else {
-		return true, dw
-	}
+	success, v := c.load(vAddr, 8)
+	return success, v
 }
 
-// Return the byte stored at
 func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	c.mc.accesses++
 	_, pAddr, flags := c.translateAndCheck(vAddr)
@@ -266,12 +149,6 @@ func (c *Core) storeByte(vAddr uint32, b uint8) bool {
 	if flags&mmuFlagWrite == 0 { // permissions
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
 		return false
 	}
 
@@ -300,12 +177,6 @@ func (c *Core) storeHalfWord(vAddr uint32, hw uint16) bool {
 	if flags&mmuFlagWrite == 0 { // permissions
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
 		return false
 	}
 
@@ -343,12 +214,6 @@ func (c *Core) storeWord(vAddr uint32, w uint32) bool {
 		return false
 	}
 
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
-		return false
-	}
-
 	if pAddr&0x3 != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
@@ -380,12 +245,6 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	if flags&mmuFlagWrite == 0 { // permissions
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
 		return false
 	}
 
@@ -424,12 +283,6 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
 	if pAddr&0x3 != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
@@ -461,12 +314,6 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 	if flags&mmuFlagWrite == 0 { // permissions
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&mmuFlagPresent == 0 { // possible page fault
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
 		return false
 	}
 
