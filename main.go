@@ -34,61 +34,21 @@ func main() {
 	// It is possible that the stack for core4 could flow into the stack of core3 without causing an error.
 	// For now, we just assume/hope this doesn't happen.
 	// More advanced memory sharing techniques are required for this.
-	rs := cpu.NewReservationSets(4)
+	rs := cpu.NewReservationSets(1)
 
 	core0 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 0)
 	core0.SetBootHandler(system.SystemStartup)
 	core0.SetTrapHandler(system.TrapHandler)
 	core0.UnsafeSetMemSize(1024 * 1024 * 1)
 
-	core1 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 1)
-	core1.SetBootHandler(system.SystemStartup)
-	core1.SetTrapHandler(system.TrapHandler)
-	core1.UnsafeSetMemSize(1024 * 1024 * 2)
-
-	core2 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 2)
-	core2.SetBootHandler(system.SystemStartup)
-	core2.SetTrapHandler(system.TrapHandler)
-	core2.UnsafeSetMemSize(1024 * 1024 * 3)
-
-	core3 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 3)
-	core3.SetBootHandler(system.SystemStartup)
-	core3.SetTrapHandler(system.TrapHandler)
-	core3.UnsafeSetMemSize(1024 * 1024 * 4)
-
 	var wg sync.WaitGroup
 	core0.StartAndSync(&wg)
-	core1.StartAndSync(&wg)
-	core2.StartAndSync(&wg)
-	core3.StartAndSync(&wg)
-	// don't need to wait on wg since we're waiting on cores
 
 	core0.Wait()
-	core1.Wait()
-	core2.Wait()
-	core3.Wait()
 
 	core0.DumpRegisters()
 	fmt.Println("Performance statistics:")
 	fmt.Printf("\ncore0: %d cycles\n", core0.InstructionsRetired())
 	fmt.Printf("core0: %d misses\n", core0.Misses())
 	fmt.Printf("core0: %d accesses\n", core0.Accesses())
-
-	core1.DumpRegisters()
-	fmt.Println("Performance statistics:")
-	fmt.Printf("\ncore1: %d cycles\n", core1.InstructionsRetired())
-	fmt.Printf("core1: %d misses\n", core1.Misses())
-	fmt.Printf("core1: %d accesses\n", core1.Accesses())
-
-	core2.DumpRegisters()
-	fmt.Println("Performance statistics:")
-	fmt.Printf("\ncore2: %d cycles\n", core2.InstructionsRetired())
-	fmt.Printf("core2: %d misses\n", core2.Misses())
-	fmt.Printf("core2: %d accesses\n", core2.Accesses())
-
-	core3.DumpRegisters()
-	fmt.Println("Performance statistics:")
-	fmt.Printf("\ncore3: %d cycles\n", core3.InstructionsRetired())
-	fmt.Printf("core3: %d misses\n", core3.Misses())
-	fmt.Printf("core3: %d accesses\n", core3.Accesses())
 }
