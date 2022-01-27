@@ -46,14 +46,18 @@ A collection of ideas for lab assigments relating to gotos.
 ** Raising exceptions
 * Handling the exception
 
-._More, more! I want more!_ (simple dynamic memory allocation) (INTERLUDE)
+._More! More! More!_ (simple dynamic memory allocation) (INTERLUDE)
 * Memory allocation
 * Finding free space
 * I don't want it anymore (free'ing space)
+* There isn't anymore! (Out Of Memory, OOM)
+    * What do you want me to do? Kill people? (the OOM killer)
 
 .*What? This isn't a book!* (paging)
 * Pages and frames
-* Page-table walker (not really an OS thing, but it's nice to understand the architecture.)
+* Handling the TLB miss
+    * Walking the page table
+    * Filling the TLB
 
 .*What? This isn't the library!* (multi-level page tables)
 * More flags!
@@ -64,6 +68,7 @@ A collection of ideas for lab assigments relating to gotos.
 
 .Idk, I haven't gotten to this part yet
 * No really. I haven't read this part.
+* Perhaps memory swapping
 
 
 == VOLUME IV - The C runtime
@@ -71,3 +76,8 @@ A collection of ideas for lab assigments relating to gotos.
 This is currently out of the scope of the project, but it seems feasible and very educational to let the students implement their own C runtime.
 This would include adding syscalls, better memory allocation, standard streams, support for command line arguments, dynamic linking, etc. etc..
 There is lots of cool stuff that can be added to make the OS more usable as a programming target.
+
+* System calls, the application side
+    * fork, exec
+    * brk, sbrk
+    * open, close, read, write
