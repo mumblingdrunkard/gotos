@@ -1,0 +1,124 @@
+= Progress report 29. Jan. 2022
+
+== Required knowledge
+
+I've noticed that there will be some missing knowledge that needs to be filled in early if this is to be successful.
+
+There are three components I would consider required for an introduction to the subject.
+It may be a good idea to spread these into two labs.
+The first lab should probably be an introduction to Go, then the second lab would cover the mathematics and give an intro to the processor and process.
+
+- mathematical preliminaries
+    - binary numbers two's complement
+    - bitwise-operations
+
+- Introduction to Go
+    - types
+        - primitives
+        - struct (composite types)
+    - interfaces
+
+- The processor
+    - Register
+    - RAM (bytes, addressing, pointers)
+    - Fetch, execute, and the program counter/pointer
+    - The process
+        - A stored sequence of instructions
+        - State
+    - Trap og Limited Direct Execution
+
+== Labs
+
+*I have started collecting bits and pieces of labs into related clusters and tried to order them in a sensible manner.*
+
+- Scheduling I
+    - Load a program
+        - The program in memory and the Process Control Block (PCB)
+    - Running a process
+    - Handling a syscall (the exit call in this case)
+    - Scheduling the next process
+    - FIFO
+    - Scheduler metrics
+    - SJF
+    - Multiple choice questions
+
+- Scheduling II
+    - More scheduler metrics
+    - Improving response times
+    - Preemptive scheduling
+    - Timer/counter
+    - Handling a trap caused by a timer/counter
+    - Deschedule a process (put it back in the PCB)
+    - Schedule the next process and put the old PCB back in the queue
+    - Round-robin
+    - Ticket/stride
+    - Fair share
+    - SJRF
+    - Multiple choice questions
+
+- The process revisited (interlude)
+    - fork/wait/exec
+    - Multiple choice questions
+
+- Virtual memory I
+    - Paging
+    - The Page-table entry (PTE) format
+    - Address translation
+    - Multiple choice questions
+
+- Virtual memory II
+    - Free space management
+    - Page table updates
+    - Reclaiming resources when a process ends
+    - Copy on Write
+    - Multiple choice questions
+
+- Virtual memory III
+    - Allocating more memory to a process
+    - brk/sbrk
+    - Swapping
+    - Replacement policies
+    - Multiple choice questions
+
+- Concurrency I
+    - Concurrent vs parallel execution
+    - Goroutines/threads
+    - Critical sections
+    - Mutex
+    - Semaphore
+    - Condition variable
+    - WaitGroup
+    - Channel
+    - Multiple choice questions
+
+== Advanced topics
+
+*These are the lab-assignments I think could be interesting for a potential second subject.*
+
+- Concurrency II
+    - Write your own Mutex (in assembly)
+    - Write yoru own WaitGroup (in assembly)
+    - Concurrent data structures (in C)
+
+- File systems I
+    - I/O
+    - file descriptors
+    - open/close/read/write
+    - Space management
+
+- MMIO, devices, and drivers
+    - Gotos GPU
+        - A "GPU" that runs as a separate thread and accepts commands
+        - Can draw stuff
+        - Can we do PONG in C, running on emulated RISC-V hardware?
+
+- C runtime and POSIX (advanced)
+    - malloc/free
+    - Events and signalling
+        - Håndtere signaler i C
+    - standard streams (stdin/stdout/stderr)
+    - IPC (inter-process-communication): pipes and shared memory
+    - The rest of POSIX
+
+- A shell in C
+    - A shell written in C to interact with the operating system

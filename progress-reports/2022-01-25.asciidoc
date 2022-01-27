@@ -1,0 +1,27 @@
+= Progress report 25. Jan. 2022
+
+Looked at TLB implementation alternatives:
+
+- It's gonna suck, big time.
+
+Started explicitly defining system specifications
+
+- Programs start executing at `0x4000`
+
+- Paging will be the only supported method of memory virtualisation
+
+Started looking at the possibilities of creating an ELF loader that returns a pcb which can be added to the scheduler queue.
+
+Decided that segmentation is a dead end, only interesting as history and not in implementation.
+
+Started adding framework for labs
+
+- Processes and scheduling
+    - The process control block (pcb)
+    - Scheduling a process
+    - Descheduling a process
+    - The context switch
+- Preemptive scheduling
+    - Interrupt me! (timers/counters and interrupts)
+        - Setting and enabling a counter
+        - Handling an interrupt

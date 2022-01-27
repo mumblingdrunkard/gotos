@@ -3,14 +3,14 @@ package cpu
 // TODO Should mmu be moved into its own package perhaps?
 
 const (
-	mmuFlagValid       uint8 = 0x01 // the virtual address is valid
-	mmuFlagRead              = 0x02 // indicates that the processor is allowed to read data from this address
-	mmuFlagWrite             = 0x04 // indicates that the processor is allowed to write data to this address
-	mmuFlagExec              = 0x08 // indicates that the processor is allowed to fetch instructions from this address
-	mmuFlagUModeAccess       = 0x10
-	mmuFlagGlobal            = 0x20
-	mmuFlagAccessed          = 0x40
-	mmuFlagDirty             = 0x80
+	pageFlagValid    uint32 = 0x01 // the virtual address is valid
+	pageFlagRead            = 0x02 // indicates that the processor is allowed to read data from this address
+	pageFlagWrite           = 0x04 // indicates that the processor is allowed to write data to this address
+	pageFlagExec            = 0x08 // indicates that the processor is allowed to fetch instructions from this address
+	pageFlagUser            = 0x10 // indicates that the processor can access this page in user mode
+	pageFlagGlobal          = 0x20 // whether this page is globally mapped into all address spaces (probably unused here)
+	pageFlagAccessed        = 0x40 // whether this page has been accessed since the access bit was last cleared
+	pageFlagDirty           = 0x80 // whether this page has been written to since the dirty bit was last cleared
 )
 
 // Two schemes to manage the A and D bits are permitted:
@@ -28,36 +28,17 @@ const (
 //     the PTE to improve performance.
 //     ---
 
-type page struct {
-	frameNumber uint32
-	flags       uint8
-}
-
 type mmu struct {
-	base uint32
-	size uint32
 }
 
 // Translates the address and returns the flags that apply if the address is valid
 // This method should return (false, false, 0, 0) when the address is invalid
 // If a translation is valid, but the page is missing (when paging is implemented), the function should return (true, false, vAddr, flags)
 // If a translation is valid and the page is present, the function should return (true, true, vAddr, flags)
-func (c *Core) translateAndCheck(vAddr uint32) (hit bool, pAddr uint32, flags uint8) {
-	if pAddr >= c.mc.mmu.size {
-		return true, 0, 0
-	}
-	return true, vAddr + c.mc.mmu.base, mmuFlagValid | mmuFlagRead | mmuFlagWrite | mmuFlagExec
+func (c *Core) translateAndCheck(vAddr uint32) (hit bool, pAddr uint32, flags uint32) {
+	return true, vAddr, pageFlagValid | pageFlagRead | pageFlagWrite | pageFlagExec
 }
 
 func newMMU() mmu {
 	return mmu{}
-}
-
-func (c *Core) UnsafeSetMemBase(base uint32) {
-	c.mc.mmu.base = base
-}
-
-func (c *Core) UnsafeSetMemSize(size uint32) {
-	c.mc.mmu.size = size
-	c.reg[2] = c.mc.mmu.size
 }

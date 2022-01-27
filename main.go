@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	// TODO create queue of PCBs with programs loaded in memory, then pass this
+	// off to the system to handle instead of starting the core at some random address.
 	f, err := os.Open("c-programs/locktest/locktest.text")
 	if err != nil {
 		panic(err)
@@ -21,25 +23,23 @@ func main() {
 	f.Close()
 
 	mem := cpu.NewMemory(cpu.EndianLittle) // little endian memory
-	err, l := mem.Write(0, fib)
+
+	err, l := mem.Write(0x4000, fib)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Printf("Wrote %d bytes\n", l)
 
-	// All the cores share the same program, but have their stack start at different addresses.
-	// By convention, the stack is placed at the end of the address space.
-	// By giving all the cores different memory sizes, we essentially give them separate stack spaces.
-	// It is possible that the stack for core4 could flow into the stack of core3 without causing an error.
-	// For now, we just assume/hope this doesn't happen.
-	// More advanced memory sharing techniques are required for this.
 	rs := cpu.NewReservationSets(1)
 
 	core0 := cpu.NewCoreWithMemoryAndReservationSets(&mem, &rs, 0)
+
+	core0.SetPC(0x4000)                        // TODO remove this
+	core0.SetIRegister(cpu.Reg_SP, mem.Size()) // TODO currently sets the stack pointer (stored in SP) to the last byte in the memory
+
 	core0.SetBootHandler(system.SystemStartup)
 	core0.SetTrapHandler(system.TrapHandler)
-	core0.UnsafeSetMemSize(1024 * 1024 * 1)
 
 	var wg sync.WaitGroup
 	core0.StartAndSync(&wg)

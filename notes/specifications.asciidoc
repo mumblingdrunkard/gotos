@@ -1,0 +1,60 @@
+= Notes on Technical Specifications
+
+== Programs:
+
+At most 2^20 processes
+
+**Start executing at address `0x00004000` by convention**
+
+- It's probably possible to add support for different starting addresses here, but eh...
+
+Have a default stack-size limit of 4MiB per thread.
+
+Conventions:
+
+- Starting address is `0x00004000`, the first address in the second page.
+- Seems like .rodata always starts 4096 bytes after the end of .text when compiling with clang.
+    - I think we can put everything into its own section/page then?
+
+== Paging:
+
+Follows the Sv32 format given in the RISC-V privileged specification, section 4.3.
+
+12b (minimum) offset
+
+20b (maximum) page number
+
+- It could be interesting to support larger sized pages/frames?
+    - TLB implementation becomes way more difficult.
+      https://ieeexplore.ieee.org/document/896967
+
+Pages *must align on a `PAGESIZE` byte* boundary
+
+Page *size must be `PAGESIZE` bytes*
+
+Pages *must map to frames that align on a `PAGESIZE` byte boundary*
+
+Pages *must map to frames that are `PAGESIZE` bytes in size*
+
+Page numbers 0 is unused.
+
+- References (load/store/fetch) will raise an access fault no matter what
+
+Pages can not be relocated.
+
+- This is a non-issue since paging avoids external fragmentation
+
+Paging TLB
+- A TLB-miss will raise a custom exception not specified in the RISC-V specification.
+	- When this happens, it is intended that a software table-walker be run to update the TLB.
+    - The walker should not raise any exceptions, it should just replace/insert an entry to the TLB.
+        - This entry must have the correct format so that when the MMU looks it up in the next cycle, it will find it in the TLB.
+        - If this page is invalid for the operation, the CPU will raise an exception in the next cycle to be handled appropriately.
+
+== Notes on shared data:
+
+When working with shared data, a program running on a hart/core is responsible for flushing and invalidating its own cache when required.
+This applies when working with a mutex.
+
+Can we try to do things like Copy-on-Write?
+https://pdos.csail.mit.edu/6.828/2019/labs/cow.html

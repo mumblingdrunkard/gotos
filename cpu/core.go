@@ -139,8 +139,7 @@ func (c *Core) UnsafeReset() {
 		c.reg[i] = 0
 	}
 
-	// Initialize reg[2] with memory size
-	c.reg[2] = c.mc.mmu.size
+	c.reg[2] = math.MaxUint32
 
 	c.pc = 0
 	// c.state.Store(HALTED)

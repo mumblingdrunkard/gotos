@@ -13,8 +13,6 @@ import (
 	"math/rand"
 )
 
-// TODO check alignments
-
 // Cache constants
 const (
 	cacheLineLength     = 64   // must be equal to 2^CACHE_LINE_OFFSET_BITS (^ being power, not xor)
@@ -92,86 +90,12 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 	return false, 0
 }
 
-// Attempts to load a byte (uint8) from cache.
-// If the cache line containing the byte is present and not marked stale, returns
-// (true, byte), oherwise (false, 0).
-func (c *cache) loadByte(address uint32) (bool, uint8) {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false, 0
-		}
-
-		offset := address & cacheLineOffsetMask
-		return true, line.data[offset]
+func (c *cache) store(address, width uint32, v uint64) bool {
+	// misaligned store will always miss
+	if address&(width-1) != 0 {
+		return false
 	}
-	return false, 0
-}
 
-// Attempts to load a halfword (uint16) from cache.
-// If the cache line containing the halfword is present and not marked stale, returns
-// (true, halfword), oherwise (false, 0).
-func (c *cache) loadHalfWord(address uint32) (bool, uint16) {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false, 0
-		}
-
-		offset := address & cacheLineOffsetMask
-		if c.endian == EndianBig {
-			return true, binary.BigEndian.Uint16(line.data[offset : offset+2])
-		} else {
-			return true, binary.LittleEndian.Uint16(line.data[offset : offset+2])
-		}
-	}
-	return false, 0
-}
-
-// Attempts to load a word (uint32) from cache.
-// If the cache line containing the word is present and not marked stale, returns
-// (true, word), oherwise (false, 0).
-func (c *cache) loadWord(address uint32) (bool, uint32) {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false, 0
-		}
-
-		offset := address & cacheLineOffsetMask
-		if c.endian == EndianBig {
-			return true, binary.BigEndian.Uint32(line.data[offset : offset+4])
-		} else {
-			return true, binary.LittleEndian.Uint32(line.data[offset : offset+4])
-		}
-	}
-	return false, 0
-}
-
-// Attempts to load a doubleword (uint64) from cache.
-// If the cache line containing the doubleword is present and not marked stale, returns
-// (true, doubleword), oherwise (false, 0).
-func (c *cache) loadDoubleWord(address uint32) (bool, uint64) {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false, 0
-		}
-
-		offset := address & cacheLineOffsetMask
-		if c.endian == EndianBig {
-			return true, binary.BigEndian.Uint64(line.data[offset : offset+8])
-		} else {
-			return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
-		}
-	}
-	return false, 0
-}
-
-// Attempts to store a byte (uint8) to cache.
-// If the cache line containing the byte is present and not marked stale, stores
-// the byte and returns true, false otherwise.
-func (c *cache) storeByte(address uint32, b uint8) bool {
 	lineNumber := address >> cacheLineOffsetBits
 	if line, present := c.lookup[lineNumber]; present {
 		if line.flags&cacheFlagStale != 0 {
@@ -179,79 +103,36 @@ func (c *cache) storeByte(address uint32, b uint8) bool {
 		}
 
 		offset := address & cacheLineOffsetMask
-		line.data[offset] = b
-		line.flags |= cacheFlagDirty
-		return true
-	}
-	return false
-}
 
-// Attempts to store a halfword (uint16) to cache.
-// If the cache line containing the halfword is present and not marked stale, stores
-// the halfword and returns true, false otherwise.
-func (c *cache) storeHalfWord(address uint32, hw uint16) bool {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false
+		if width == 1 {
+			line.data[offset] = uint8(v)
 		}
 
-		offset := address & cacheLineOffsetMask
-		bytes := make([]uint8, 2)
+		var bytes [8]uint8
 		if c.endian == EndianBig {
-			binary.BigEndian.PutUint16(bytes, hw)
+			switch width {
+			case 2:
+				binary.BigEndian.PutUint16(bytes[:], uint16(v))
+			case 4:
+				binary.BigEndian.PutUint32(bytes[:], uint32(v))
+			case 8:
+				binary.BigEndian.PutUint64(bytes[:], v)
+			default:
+				panic("Invalid store width")
+			}
 		} else {
-			binary.LittleEndian.PutUint16(bytes, hw)
+			switch width {
+			case 2:
+				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
+			case 4:
+				binary.LittleEndian.PutUint32(bytes[:], uint32(v))
+			case 8:
+				binary.LittleEndian.PutUint64(bytes[:], v)
+			default:
+				panic("Invalid store width")
+			}
 		}
-		copy(line.data[offset:], bytes)
-		line.flags |= cacheFlagDirty
-		return true
-	}
-	return false
-}
-
-// Attempts to store a word (uint32) to cache.
-// If the cache line containing the word is present and not marked stale, stores
-// the word and returns true, false otherwise.
-func (c *cache) storeWord(address uint32, w uint32) bool {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false
-		}
-
-		offset := address & cacheLineOffsetMask
-		bytes := make([]uint8, 4)
-		if c.endian == EndianBig {
-			binary.BigEndian.PutUint32(bytes, w)
-		} else {
-			binary.LittleEndian.PutUint32(bytes, w)
-		}
-		copy(line.data[offset:], bytes)
-		line.flags |= cacheFlagDirty
-		return true
-	}
-	return false
-}
-
-// Attempts to store a doubleword (uint32) to cache.
-// If the cache line containing the doubleword is present and not marked stale, stores
-// the doubleword and returns true, false otherwise.
-func (c *cache) storeDoubleWord(address uint32, dw uint64) bool {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false
-		}
-
-		offset := address & cacheLineOffsetMask
-		bytes := make([]uint8, 4)
-		if c.endian == EndianBig {
-			binary.BigEndian.PutUint64(bytes, dw)
-		} else {
-			binary.LittleEndian.PutUint64(bytes, dw)
-		}
-		copy(line.data[offset:], bytes)
+		copy(line.data[offset:], bytes[0:width])
 		line.flags |= cacheFlagDirty
 		return true
 	}
@@ -341,6 +222,20 @@ func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	return true
 }
 
+// writes a cache-line if present
+func (c *cache) writebackLine(lineNumber uint32, dst []uint8) {
+	if _, present := c.lookup[lineNumber]; present {
+		line := c.lookup[lineNumber]
+
+		if line.flags&cacheFlagDirty != 0 {
+			address := line.number << cacheLineOffsetBits
+			copy(dst[address:], line.data[:])
+			// clear the dirty bit
+			line.flags &= (cacheFlagDirty ^ cacheFlagAll)
+		}
+	}
+}
+
 // Writes back all cache-lines back to `dst`.
 // Helpful if you want all other cores to see changes made by this core.
 func (c *cache) writebackAll(dst []uint8) int {
@@ -358,6 +253,15 @@ func (c *cache) writebackAll(dst []uint8) int {
 		}
 	}
 	return written
+}
+
+// Invalidates a cache-line if present
+func (c *cache) invalidateLine(lineNumber uint32) {
+	if _, present := c.lookup[lineNumber]; present {
+		line := c.lookup[lineNumber]
+
+		line.flags |= cacheFlagStale // set stale bit, forces refresh on next access
+	}
 }
 
 // Marks all cache-lines as stale.

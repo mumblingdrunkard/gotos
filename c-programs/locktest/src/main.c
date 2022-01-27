@@ -1,8 +1,6 @@
-extern void dbg_break();
-extern int sys_id();
-extern void atomic_add(int *, int);
-
 #include "mutex.h"
+
+extern void atomic_add(int *, int);
 
 int main() {
     struct mutex *m = (struct mutex *)4096;
