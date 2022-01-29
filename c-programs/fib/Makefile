@@ -1,45 +1,16 @@
-CC = clang -nostdlib --target=riscv32 -march=rv32im -Oz
+CC = clang -nostdlib --target=riscv32 -march=rv32g -Oz
 OBJCOPY = llvm-objcopy
-
 
 fib.text: fib
 	${OBJCOPY} -O binary fib fib.text
 
-fib: obj/_start.o obj/main.o obj/sys_exit.o
-	${CC} obj/_start.o obj/main.o obj/sys_exit.o -o fib -Wl,-Ttext=0x00000000
-
-obj/main.o: obj src/main.c
-	${CC} -c src/main.c -o obj/main.o
-
-obj/_start.o: obj src/_start.c
-	${CC} -c src/_start.c -o obj/_start.o
-
-obj/sys_exit.o: obj src/sys_exit.s
-	${CC} -c src/sys_exit.s -o obj/sys_exit.o
-
-
-fib_asm: asm/main.s asm/_start.s asm/sys_exit.s
-
-asm/main.s: asm src/main.c
-	${CC} -S src/main.c -o asm/main.s
-
-asm/_start.s: asm src/_start.c
-	${CC} -S src/_start.c -o asm/_start.s
-
-asm/sys_exit.s: asm src/sys_exit.s
-	cp src/sys_exit.s asm/sys_exit.s
-
-
-
-obj:
-	mkdir -p obj
-
-asm:
-	mkdir -p asm
-
-
+fib:
+	${CC} src/_start.c   \
+		  src/main.c     \
+		  src/sys_exit.s \
+		  -o fib -Wl,-Ttext=0x00004000
 
 .PHONY: clean
 
 clean:
-	-@rm -rf obj asm fib fib.text
+	-@rm -rf fib fib.text

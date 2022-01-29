@@ -3,8 +3,8 @@
 extern void atomic_add(int *, int);
 
 int main() {
-    struct mutex *m = (struct mutex *)4096;
-    int *ct = (int *)2048;
+    struct mutex *m = (struct mutex *)(0x20000);
+    int *ct = (int *)(0x21000);
 
     for (int i = 0; i < 1024 * 32; i++) {
         // This really sucks for cache and we're only updating one counter so
