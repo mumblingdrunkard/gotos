@@ -177,13 +177,14 @@ func (c *cache) storeWordNoDirty(address uint32, w uint32) bool {
 // it is replaced with the new data.
 //
 // Returns true if a replacement/refresh was performed, false otherwise.
+// Assumes exclusive access to the source slice.
 func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool {
 	// if line is already present
 	if _, present := c.lookup[lineNumber]; present {
 		line := c.lookup[lineNumber]
 
 		if line.flags&cacheFlagStale == 0 { // if line isn't stale
-			return false // line is not updated
+			return false // don't do anything
 		}
 
 		address := lineNumber << cacheLineOffsetBits
@@ -205,8 +206,8 @@ func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool 
 	address := eject.number << cacheLineOffsetBits
 	delete(c.lookup, eject.number) // delete the old entry, no-op if there is no old entry
 
-	// check if it's dirty, if so, writeback
-	if eject.flags&cacheFlagDirty != 0 {
+	// check if the ejected line is dirty and not stale, if so, writeback
+	if eject.flags&cacheFlagDirty != 0 && eject.flags&cacheFlagStale == 0 {
 		copy(src[address:], eject.data[:])
 	}
 
@@ -227,7 +228,7 @@ func (c *cache) writebackLine(lineNumber uint32, dst []uint8) {
 	if _, present := c.lookup[lineNumber]; present {
 		line := c.lookup[lineNumber]
 
-		if line.flags&cacheFlagDirty != 0 {
+		if line.flags&cacheFlagDirty != 0 && line.flags&cacheFlagStale == 0 {
 			address := line.number << cacheLineOffsetBits
 			copy(dst[address:], line.data[:])
 			// clear the dirty bit
