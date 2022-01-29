@@ -269,8 +269,8 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	return c.store(vAddr, 8, dw)
 }
 
-// Loads a memory straight from memory, bypassing the cache.
-func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
+// Requires memory to be locked before calling
+func (c *Core) unsafeLoadAtomic(vAddr, width uint32) (bool, uint64) {
 	c.mc.accesses++
 	_, pAddr, flags := c.translateAndCheck(vAddr)
 
@@ -280,31 +280,35 @@ func (c *Core) unsafeLoadThroughWord(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	if flags&pageFlagRead == 0 { // permissions
+	if flags&pageFlagWrite == 0 { // permissions
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAccessFault)
 		return false, 0
 	}
 
-	if pAddr&0x3 != 0 { // address alignment
+	if pAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
 
-	var value uint32
-	if c.mc.mem.endian == EndianBig {
-		value = binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
-	} else {
-		value = binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
-	}
-	c.mc.dCache.storeWordNoDirty(pAddr, value)
+	lineNumber := pAddr >> cacheLineOffsetBits
 
-	return true, value
+	// writebackLine if it is present and dirty
+	c.mc.dCache.writebackLine(lineNumber, c.mc.mem.data[:])
+
+	// invalidateLine if it is present
+	c.mc.dCache.invalidateLine(lineNumber)
+
+	// cache replace will refresh the line if present, or eject a random line
+	c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
+
+	// load value from cache
+	return c.mc.dCache.load(pAddr, width)
 }
 
-// Stores a word straight to memory, bypassing cache.
-func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
+// Requires memory to be locked before calling
+func (c *Core) unsafeStoreAtomic(vAddr, width uint32, v uint64) bool {
 	c.mc.accesses++
 	_, pAddr, flags := c.translateAndCheck(vAddr)
 
@@ -320,24 +324,22 @@ func (c *Core) unsafeStoreThroughWord(vAddr uint32, w uint32) bool {
 		return false
 	}
 
-	if pAddr&0x3 != 0 { // address alignment
+	if pAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
 
-	var bytes [4]uint8
+	lineNumber := pAddr >> cacheLineOffsetBits
 
-	if c.mc.mem.endian == EndianBig {
-		binary.BigEndian.PutUint32(bytes[:], w)
-	} else {
-		binary.LittleEndian.PutUint32(bytes[:], w)
-	}
+	// ensure line is in cache
+	c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
 
-	copy(c.mc.mem.data[pAddr:], bytes[:])
+	// write data to cache
+	c.mc.dCache.store(pAddr, width, v)
 
-	// also update cache
-	c.mc.dCache.storeWordNoDirty(pAddr, w) // May be uncached, ignore
+	// writeback line
+	c.mc.dCache.writebackLine(lineNumber, c.mc.mem.data[:])
 
 	return true
 }

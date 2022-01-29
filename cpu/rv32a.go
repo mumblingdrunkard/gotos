@@ -45,7 +45,8 @@ func (c *Core) lr_w(inst uint32) {
 	// update rset
 	c.mc.rsets.Lock()
 	c.mc.mem.Lock()
-	success, w := c.unsafeLoadThroughWord(addr)
+	success, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if success {
 		c.reg[rd] = w
 	}
@@ -71,7 +72,7 @@ func (c *Core) sc_w(inst uint32) {
 	// check rset
 	if _, ok := (*c.mc.rsets.lookup[c.csr[Csr_MHARTID]])[pAddr]; ok {
 		c.mc.mem.Lock()
-		success := c.unsafeStoreThroughWord(addr, c.reg[rs2])
+		success := c.unsafeStoreAtomic(addr, 4, uint64(c.reg[rs2]))
 		c.mc.mem.Unlock()
 
 		if success {
@@ -100,9 +101,10 @@ func (c *Core) amoswap_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		if c.unsafeStoreThroughWord(addr, src) {
+		if c.unsafeStoreAtomic(addr, 4, uint64(src)) {
 			c.reg[rd] = w
 		}
 	}
@@ -124,9 +126,10 @@ func (c *Core) amoadd_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		if c.unsafeStoreThroughWord(addr, src+w) {
+		if c.unsafeStoreAtomic(addr, 4, uint64(src+w)) {
 			c.reg[rd] = w
 		}
 	}
@@ -148,11 +151,10 @@ func (c *Core) amoand_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	_, c.reg[rd] = c.unsafeLoadThroughWord(addr)
-	c.unsafeStoreThroughWord(addr, src&c.reg[rd])
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, src&w)
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src&w))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -175,9 +177,10 @@ func (c *Core) amoor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, src|w)
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src|w))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -200,9 +203,10 @@ func (c *Core) amoxor_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, src^w)
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src^w))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -225,9 +229,10 @@ func (c *Core) amomax_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, uint32(max(int32(src), int32(w))))
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(max(int32(src), int32(w))))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -250,9 +255,10 @@ func (c *Core) amomaxu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, maxu(src, w))
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(maxu(src, w)))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -275,9 +281,10 @@ func (c *Core) amomin_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, uint32(min(int32(src), int32(w))))
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(min(int32(src), int32(w))))
 		if ssuccess {
 			c.reg[rd] = w
 		}
@@ -300,9 +307,10 @@ func (c *Core) amominu_w(inst uint32) {
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
 	c.mc.mem.Lock()
-	lsuccess, w := c.unsafeLoadThroughWord(addr)
+	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
+	w := uint32(v)
 	if lsuccess {
-		ssuccess := c.unsafeStoreThroughWord(addr, minu(src, w))
+		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(minu(src, w)))
 		if ssuccess {
 			c.reg[rd] = w
 		}

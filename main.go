@@ -12,7 +12,10 @@ import (
 func main() {
 	// TODO create queue of PCBs with programs loaded in memory, then pass this
 	// off to the system to handle instead of starting the core at some random address.
-	f, err := os.Open("c-programs/fib/fib.text")
+
+	system.Load("c-programs/locktest/locktest")
+
+	f, err := os.Open("c-programs/locktest/locktest.text")
 	if err != nil {
 		panic(err)
 	}
