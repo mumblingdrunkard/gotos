@@ -36,6 +36,10 @@ func newMemoryController(m *Memory, rs *ReservationSets) memoryController {
 	}
 }
 
+const (
+	cacheEnable = true
+)
+
 // Attempts to load a 4 byte instruction stored at virtual address `vAddr`.
 // If successful, returns `true, <instruction>`, `false, 0` otherwise.
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
@@ -59,6 +63,16 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAddressMisaligned)
 		return false, 0
+	}
+
+	if !cacheEnable {
+		c.mc.mem.Lock()
+		defer c.mc.mem.Unlock()
+		if c.mc.mem.endian == EndianBig {
+			return true, binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
+		} else {
+			return true, binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
+		}
 	}
 
 	if hit, instruction := c.mc.iCache.load(pAddr, 4); !hit {
@@ -99,6 +113,39 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 		return false, 0
 	}
 
+	if !cacheEnable {
+		c.mc.mem.Lock()
+		defer c.mc.mem.Unlock()
+
+		if width == 1 {
+			return true, uint64(c.mc.mem.data[pAddr])
+		}
+
+		if c.mc.mem.endian == EndianBig {
+			switch width {
+			case 2:
+				return true, uint64(binary.BigEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2]))
+			case 4:
+				return true, uint64(binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4]))
+			case 8:
+				return true, binary.BigEndian.Uint64(c.mc.mem.data[pAddr : pAddr+8])
+			default:
+				panic("Invalid load width")
+			}
+		} else {
+			switch width {
+			case 2:
+				return true, uint64(binary.LittleEndian.Uint16(c.mc.mem.data[pAddr : pAddr+4]))
+			case 4:
+				return true, uint64(binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4]))
+			case 8:
+				return true, binary.LittleEndian.Uint64(c.mc.mem.data[pAddr : pAddr+4])
+			default:
+				panic("Invalid load width")
+			}
+		}
+	}
+
 	if hit, v := c.mc.dCache.load(pAddr, width); !hit {
 		c.mc.misses++
 		lineNumber := pAddr >> cacheLineOffsetBits
@@ -132,6 +179,45 @@ func (c *Core) store(vAddr, width uint32, v uint64) bool {
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
+	}
+
+	if !cacheEnable {
+		c.mc.mem.Lock()
+		defer c.mc.mem.Unlock()
+
+		if width == 1 {
+			c.mc.mem.data[pAddr] = uint8(v)
+			return true
+		}
+
+		var bytes [8]uint8
+
+		if c.mc.mem.endian == EndianBig {
+			switch width {
+			case 2:
+				binary.BigEndian.PutUint16(bytes[:], uint16(v))
+			case 4:
+				binary.BigEndian.PutUint32(bytes[:], uint32(v))
+			case 8:
+				binary.BigEndian.PutUint64(bytes[:], v)
+			default:
+				panic("Invalid store width")
+			}
+		} else {
+			switch width {
+			case 2:
+				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
+			case 4:
+				binary.LittleEndian.PutUint32(bytes[:], uint32(v))
+			case 8:
+				binary.LittleEndian.PutUint64(bytes[:], v)
+			default:
+				panic("Invalid store width")
+			}
+		}
+
+		copy(c.mc.mem.data[pAddr:], bytes[:width])
+		return true
 	}
 
 	if hit := c.mc.dCache.store(pAddr, width, v); !hit {
