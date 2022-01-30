@@ -12,8 +12,7 @@ import (
 func main() {
 	// TODO create queue of PCBs with programs loaded in memory, then pass this
 	// off to the system to handle instead of starting the core at some random address.
-
-	system.Load("c-programs/locktest/locktest")
+	// system.Load("c-programs/locktest/locktest")
 
 	f, err := os.Open("c-programs/locktest/locktest.text")
 	if err != nil {
@@ -27,17 +26,15 @@ func main() {
 
 	mem := cpu.NewMemory(cpu.EndianLittle) // little endian memory
 
-	err, l := mem.Write(0x4000, fib)
+	err, _ = mem.Write(0x4000, fib)
 	if err != nil {
 		panic(err)
 	}
 
-	err, l = mem.Write(0x14000, fib)
+	err, _ = mem.Write(0x14000, fib)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("Wrote %d bytes\n", l)
 
 	rs := cpu.NewReservationSets(2)
 
