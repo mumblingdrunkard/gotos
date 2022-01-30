@@ -104,13 +104,12 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 
 		offset := address & cacheLineOffsetMask
 
-		if width == 1 {
-			line.data[offset] = uint8(v)
-		}
-
 		var bytes [8]uint8
+
 		if c.endian == EndianBig {
 			switch width {
+			case 1:
+				bytes[0] = uint8(v)
 			case 2:
 				binary.BigEndian.PutUint16(bytes[:], uint16(v))
 			case 4:
@@ -122,6 +121,8 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 			}
 		} else {
 			switch width {
+			case 1:
+				bytes[0] = uint8(v)
 			case 2:
 				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
 			case 4:
@@ -132,32 +133,9 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 				panic("Invalid store width")
 			}
 		}
+
 		copy(line.data[offset:], bytes[0:width])
 		line.flags |= cacheFlagDirty
-		return true
-	}
-	return false
-}
-
-// Attempts to store a word (uint32) to cache, but does not set the dirty bit if
-// the store is completed.
-// If the cache line containing the word is present and not marked stale, stores
-// the word and returns true, false otherwise.
-func (c *cache) storeWordNoDirty(address uint32, w uint32) bool {
-	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false
-		}
-
-		offset := address & cacheLineOffsetMask
-		bytes := make([]uint8, 4)
-		if c.endian == EndianBig {
-			binary.BigEndian.PutUint32(bytes, w)
-		} else {
-			binary.LittleEndian.PutUint32(bytes, w)
-		}
-		copy(line.data[offset:], bytes)
 		return true
 	}
 	return false
