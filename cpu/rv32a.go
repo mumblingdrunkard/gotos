@@ -1,9 +1,5 @@
 package cpu
 
-// TODO raise exceptions when addresses are misaligned
-
-// TODO remove helper functions to not pollute namespace, only used once each anyway
-
 func (c *Core) lr_w(inst uint32) {
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
