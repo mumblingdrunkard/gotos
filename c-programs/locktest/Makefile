@@ -8,13 +8,12 @@ locktest.text: locktest
 locktest:
 	${CC} src/_start.c     \
 		  src/main.c       \
+		  src/sys.c        \
 		  src/mutex.c      \
 		  src/acquire.s    \
 		  src/release.s    \
-		  src/atomic_add.s \
 		  src/sync.s       \
 		  src/sys_exit.s   \
-		  src/dbg_break.s  \
 		  src/syscall.s    \
 		  -o locktest -Wl,-Ttext=0x00004000
 
