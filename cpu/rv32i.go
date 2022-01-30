@@ -5,8 +5,6 @@
 
 package cpu
 
-import "fmt"
-
 // add immediate
 func (c *Core) addi(inst uint32) {
 	rd := (inst >> 7) & 0x1f
@@ -450,7 +448,6 @@ func (c *Core) sb(inst uint32) {
 
 	address := offset + c.reg[rs1]
 	b := uint8(c.reg[rs2] & 0xff)
-	fmt.Println("storing byte", b)
 
 	c.storeByte(address, b)
 }
