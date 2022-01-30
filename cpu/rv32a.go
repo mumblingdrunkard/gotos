@@ -3,37 +3,6 @@ package cpu
 // TODO raise exceptions when addresses are misaligned
 
 // TODO remove helper functions to not pollute namespace, only used once each anyway
-func max(a, b int32) int32 {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
-}
-
-func maxu(a, b uint32) uint32 {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
-}
-
-func min(a, b int32) int32 {
-	if a < b {
-		return a
-	} else {
-		return b
-	}
-}
-
-func minu(a, b uint32) uint32 {
-	if a < b {
-		return a
-	} else {
-		return b
-	}
-}
 
 func (c *Core) lr_w(inst uint32) {
 	rd := (inst >> 7) & 0x1f
@@ -219,6 +188,14 @@ func (c *Core) amoxor_w(inst uint32) {
 }
 
 func (c *Core) amomax_w(inst uint32) {
+	max := func(a, b int32) int32 {
+		if a > b {
+			return a
+		} else {
+			return b
+		}
+	}
+
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -245,6 +222,14 @@ func (c *Core) amomax_w(inst uint32) {
 }
 
 func (c *Core) amomaxu_w(inst uint32) {
+	maxu := func(a, b uint32) uint32 {
+		if a > b {
+			return a
+		} else {
+			return b
+		}
+	}
+
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -257,6 +242,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 	c.mc.mem.Lock()
 	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
 	w := uint32(v)
+
 	if lsuccess {
 		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(maxu(src, w)))
 		if ssuccess {
@@ -271,6 +257,14 @@ func (c *Core) amomaxu_w(inst uint32) {
 }
 
 func (c *Core) amomin_w(inst uint32) {
+	min := func(a, b int32) int32 {
+		if a < b {
+			return a
+		} else {
+			return b
+		}
+	}
+
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -297,6 +291,14 @@ func (c *Core) amomin_w(inst uint32) {
 }
 
 func (c *Core) amominu_w(inst uint32) {
+	minu := func(a, b uint32) uint32 {
+		if a < b {
+			return a
+		} else {
+			return b
+		}
+	}
+
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
