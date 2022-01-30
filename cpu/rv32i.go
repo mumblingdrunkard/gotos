@@ -5,6 +5,8 @@
 
 package cpu
 
+import "fmt"
+
 // add immediate
 func (c *Core) addi(inst uint32) {
 	rd := (inst >> 7) & 0x1f
@@ -448,6 +450,7 @@ func (c *Core) sb(inst uint32) {
 
 	address := offset + c.reg[rs1]
 	b := uint8(c.reg[rs2] & 0xff)
+	fmt.Println("storing byte", b)
 
 	c.storeByte(address, b)
 }
@@ -483,7 +486,7 @@ func (c *Core) sw(inst uint32) {
 func (c *Core) fence(inst uint32) {
 	// I think this should flush the cache?
 	// Will need some input from an expert or something.
-	c.cacheWritebackAndInvalidate()
+	c.CacheWritebackAndInvalidate()
 
 	// This ensures no memory operations from this hart can be observed before any memory operation that comes after the FENCE.
 
