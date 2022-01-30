@@ -35,7 +35,7 @@ type mmu struct {
 // This method should return (false, false, 0, 0) when the address is invalid
 // If a translation is valid, but the page is missing (when paging is implemented), the function should return (true, false, vAddr, flags)
 // If a translation is valid and the page is present, the function should return (true, true, vAddr, flags)
-func (c *Core) translateAndCheck(vAddr uint32) (hit bool, pAddr uint32, flags uint32) {
+func (c *Core) Translate(vAddr uint32) (hit bool, pAddr uint32, flags uint32) {
 	return true, vAddr, pageFlagValid | pageFlagRead | pageFlagWrite | pageFlagExec
 }
 

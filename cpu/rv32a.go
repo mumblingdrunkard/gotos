@@ -5,7 +5,7 @@ func (c *Core) lr_w(inst uint32) {
 	rs1 := (inst >> 15) & 0x1f
 
 	addr := c.reg[rs1]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	// update rset
@@ -31,7 +31,7 @@ func (c *Core) sc_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock()
@@ -63,7 +63,7 @@ func (c *Core) amoswap_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -89,7 +89,7 @@ func (c *Core) amoadd_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -115,7 +115,7 @@ func (c *Core) amoand_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -142,7 +142,7 @@ func (c *Core) amoor_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -169,7 +169,7 @@ func (c *Core) amoxor_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -204,7 +204,7 @@ func (c *Core) amomax_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -239,7 +239,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -275,7 +275,7 @@ func (c *Core) amomin_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
@@ -310,7 +310,7 @@ func (c *Core) amominu_w(inst uint32) {
 
 	addr := c.reg[rs1]
 	src := c.reg[rs2]
-	_, pAddr, _ := c.translateAndCheck(addr)
+	_, pAddr, _ := c.Translate(addr)
 	pLine := pAddr >> cacheLineOffsetBits
 
 	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock

@@ -45,7 +45,7 @@ const (
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	var inst uint32
-	_, pAddr, flags := c.translateAndCheck(vAddr)
+	_, pAddr, flags := c.Translate(vAddr)
 
 	if flags&pageFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -93,7 +93,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 // loads up to 8 bytes
 func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
+	_, pAddr, flags := c.Translate(vAddr)
 
 	if flags&pageFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -161,7 +161,7 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 
 func (c *Core) store(vAddr, width uint32, v uint64) bool {
 	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
+	_, pAddr, flags := c.Translate(vAddr)
 
 	if flags&pageFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -272,7 +272,7 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 // Requires memory to be locked before calling
 func (c *Core) unsafeLoadAtomic(vAddr, width uint32) (bool, uint64) {
 	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
+	_, pAddr, flags := c.Translate(vAddr)
 
 	if flags&pageFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -310,7 +310,7 @@ func (c *Core) unsafeLoadAtomic(vAddr, width uint32) (bool, uint64) {
 // Requires memory to be locked before calling
 func (c *Core) unsafeStoreAtomic(vAddr, width uint32, v uint64) bool {
 	c.mc.accesses++
-	_, pAddr, flags := c.translateAndCheck(vAddr)
+	_, pAddr, flags := c.Translate(vAddr)
 
 	if flags&pageFlagValid == 0 { // address was invalid
 		c.csr[Csr_MTVAL] = vAddr
@@ -345,26 +345,34 @@ func (c *Core) unsafeStoreAtomic(vAddr, width uint32, v uint64) bool {
 }
 
 // Writes the data cache to memory
-func (c *Core) cacheWriteback() {
+func (c *Core) CacheWriteback() {
 	c.mc.mem.Lock()
 	c.mc.dCache.writebackAll(c.mc.mem.data[:])
 	c.mc.mem.Unlock()
 }
 
 // Invalidates the data cache
-func (c *Core) cacheInvalidate() {
+func (c *Core) CacheInvalidate() {
 	c.mc.dCache.invalidateAll()
 }
 
 // Invalidates the instruction cache
-func (c *Core) instructionCacheInvalidate() {
+func (c *Core) InstructionCacheInvalidate() {
 	c.mc.iCache.invalidateAll()
 }
 
+func (c *Core) ReadMemory(addr, bytes uint32) (error, []uint8) {
+	return c.mc.mem.Read(addr, bytes)
+}
+
+func (c *Core) WriteMemory(addr uint32, data []uint8) (error, int) {
+	return c.mc.mem.Write(addr, data)
+}
+
 // Writeback and invalidate the data cache
-func (c *Core) cacheWritebackAndInvalidate() {
-	c.cacheWriteback()
-	c.cacheInvalidate()
+func (c *Core) CacheWritebackAndInvalidate() {
+	c.CacheWriteback()
+	c.CacheInvalidate()
 }
 
 func (c *Core) Misses() uint64 {
