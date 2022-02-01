@@ -16,12 +16,13 @@ Decided that segmentation is a dead end, only interesting as history and not in 
 
 Started adding framework for labs
 
-- Processes and scheduling
-    - The process control block (pcb)
-    - Scheduling a process
-    - Descheduling a process
-    - The context switch
-- Preemptive scheduling
-    - Interrupt me! (timers/counters and interrupts)
-        - Setting and enabling a counter
-        - Handling an interrupt
+.Processes and scheduling
+- The process control block (pcb)
+- Scheduling a process
+- Descheduling a process
+- The context switch
+
+.Preemptive scheduling
+- Interrupt me! (timers/counters and interrupts)
+    -- Setting and enabling a counter
+    -- Handling an interrupt

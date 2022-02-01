@@ -22,8 +22,8 @@
   Processes use the `n` MiB slice/array for their memory.
   Should the kernel too use this memory for its data structures or is it fine that it's not completely realistic?
   Using RAM for kernel data structures would likely complicate things a whole lot.
-  - Cons: Not complete realism.
-  - Pros: Much easier to implement.
+  -- Cons: Not complete realism.
+  -- Pros: Much easier to implement.
 
 == Started looking into process framework.
 
