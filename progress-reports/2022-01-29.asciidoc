@@ -110,14 +110,14 @@ The first lab should probably be an introduction to Go, then the second lab woul
 * Gotos GPU
     ** A "GPU" that runs as a separate thread and accepts commands
     ** Can draw stuff
-    ** Can we do PONG in C, running on emulated RISC*V hardware?
+    ** Can we do PONG in C, running on emulated RISC-V hardware?
 
 .C runtime and POSIX (advanced)
 * malloc/free
 * Events and signalling
     ** Håndtere signaler i C
 * standard streams (stdin/stdout/stderr)
-* IPC (inter*process*communication): pipes and shared memory
+* IPC (inter-process-communication): pipes and shared memory
 * The rest of POSIX
 
 .A shell in C
