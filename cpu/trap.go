@@ -48,5 +48,5 @@ func (c *Core) trap(reason uint32) {
 	c.csr[Csr_MCAUSE] = reason
 	c.csr[Csr_MEPC] = c.pc
 	c.jumped = true
-	c.trapFn(c)
+	c.system.HandleTrap(c)
 }

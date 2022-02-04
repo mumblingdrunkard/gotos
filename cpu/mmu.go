@@ -31,12 +31,37 @@ const (
 type mmu struct {
 }
 
+type accessType int
+
+const (
+	accessTypeLoad             accessType = 0
+	accessTypeStore                       = 1
+	accessTypeInstructionFetch            = 2
+)
+
 // Translates the address and returns the flags that apply if the address is valid
 // This method should return (false, false, 0, 0) when the address is invalid
 // If a translation is valid, but the page is missing (when paging is implemented), the function should return (true, false, vAddr, flags)
 // If a translation is valid and the page is present, the function should return (true, true, vAddr, flags)
-func (c *Core) Translate(vAddr uint32) (hit bool, pAddr uint32, flags uint32) {
-	return true, vAddr, pageFlagValid | pageFlagRead | pageFlagWrite | pageFlagExec
+func (c *Core) Translate(vAddr uint32, at accessType) (success bool, pAddr uint32) {
+	// get the satp register
+	satp := c.csr[Csr_SATP]
+	if satp&0x80000000 == 0 { // bare mode, no translation or protection
+		return true, vAddr
+	}
+
+	// TODO address translation
+
+	// TODO physical memory protection
+
+	// TODO physical memory attributes
+
+	return true, vAddr
+}
+
+func (c *Core) walkTable(vAddr uint32) {
+	// satp := c.csr[Csr_SATP]
+	// a := (satp & 0x003FFFFF)
 }
 
 func newMMU() mmu {

@@ -19,19 +19,15 @@ import (
 type memoryController struct {
 	iCache   cache
 	dCache   cache
-	mem      *Memory          // RAM (possibly shared)
-	rsets    *ReservationSets // Reservation sets (possibly shared)
 	mmu      mmu
 	misses   uint64
 	accesses uint64
 }
 
-func newMemoryController(m *Memory, rs *ReservationSets) memoryController {
+func newMemoryController() memoryController {
 	return memoryController{
-		dCache: newCache(m.endian),
-		iCache: newCache(m.endian),
-		rsets:  rs,
-		mem:    m,
+		dCache: newCache(),
+		iCache: newCache(),
 		mmu:    newMMU(),
 	}
 }
@@ -45,42 +41,31 @@ const (
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	var inst uint32
-	_, pAddr, flags := c.Translate(vAddr)
 
-	if flags&pageFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapInstructionPageFault)
-		return false, 0
-	}
-
-	if flags&pageFlagExec == 0 { // physical address is not marked executable
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapInstructionAccessFault)
-		return false, 0
-	}
-
-	if pAddr&0x3 != 0 { // address alignment
+	if vAddr&0x3 != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapInstructionAddressMisaligned)
 		return false, 0
 	}
 
+	success, pAddr := c.Translate(vAddr, accessTypeInstructionFetch)
+
+	if !success {
+		return false, 0
+	}
+
 	if !cacheEnable {
-		c.mc.mem.Lock()
-		defer c.mc.mem.Unlock()
-		if c.mc.mem.endian == EndianBig {
-			return true, binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
-		} else {
-			return true, binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4])
-		}
+		c.system.Memory().Lock()
+		defer c.system.Memory().Unlock()
+		return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
 	}
 
 	if hit, instruction := c.mc.iCache.load(pAddr, 4); !hit {
 		c.mc.misses++
 		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.iCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
+		c.system.Memory().Lock()
+		c.mc.iCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.system.Memory().Unlock()
 		_, instruction := c.mc.iCache.load(pAddr, 4)
 		inst = uint32(instruction)
 	} else {
@@ -93,65 +78,45 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 // loads up to 8 bytes
 func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	c.mc.accesses++
-	_, pAddr, flags := c.Translate(vAddr)
 
-	if flags&pageFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
-	if flags&pageFlagRead == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if pAddr&(width-1) != 0 { // address alignment
+	if vAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
 		return false, 0
 	}
 
+	success, pAddr := c.Translate(vAddr, accessTypeLoad)
+
+	if !success {
+		return false, 0
+	}
+
 	if !cacheEnable {
-		c.mc.mem.Lock()
-		defer c.mc.mem.Unlock()
+		c.system.Memory().Lock()
+		defer c.system.Memory().Unlock()
 
 		if width == 1 {
-			return true, uint64(c.mc.mem.data[pAddr])
+			return true, uint64(c.system.Memory().data[pAddr])
 		}
 
-		if c.mc.mem.endian == EndianBig {
-			switch width {
-			case 2:
-				return true, uint64(binary.BigEndian.Uint16(c.mc.mem.data[pAddr : pAddr+2]))
-			case 4:
-				return true, uint64(binary.BigEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4]))
-			case 8:
-				return true, binary.BigEndian.Uint64(c.mc.mem.data[pAddr : pAddr+8])
-			default:
-				panic("Invalid load width")
-			}
-		} else {
-			switch width {
-			case 2:
-				return true, uint64(binary.LittleEndian.Uint16(c.mc.mem.data[pAddr : pAddr+4]))
-			case 4:
-				return true, uint64(binary.LittleEndian.Uint32(c.mc.mem.data[pAddr : pAddr+4]))
-			case 8:
-				return true, binary.LittleEndian.Uint64(c.mc.mem.data[pAddr : pAddr+4])
-			default:
-				panic("Invalid load width")
-			}
+		switch width {
+		case 2:
+			return true, uint64(binary.LittleEndian.Uint16(c.system.Memory().data[pAddr : pAddr+4]))
+		case 4:
+			return true, uint64(binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4]))
+		case 8:
+			return true, binary.LittleEndian.Uint64(c.system.Memory().data[pAddr : pAddr+4])
+		default:
+			panic("Invalid load width")
 		}
 	}
 
 	if hit, v := c.mc.dCache.load(pAddr, width); !hit {
 		c.mc.misses++
 		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
+		c.system.Memory().Lock()
+		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.system.Memory().Unlock()
 		_, v := c.mc.dCache.load(pAddr, width)
 		return true, v
 	} else {
@@ -161,71 +126,51 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 
 func (c *Core) store(vAddr, width uint32, v uint64) bool {
 	c.mc.accesses++
-	_, pAddr, flags := c.Translate(vAddr)
 
-	if flags&pageFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&pageFlagWrite == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if pAddr&(width-1) != 0 { // address alignment
+	if vAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
 		return false
 	}
 
+	success, pAddr := c.Translate(vAddr, accessTypeStore)
+
+	if !success {
+		return false
+	}
+
 	if !cacheEnable {
-		c.mc.mem.Lock()
-		defer c.mc.mem.Unlock()
+		c.system.Memory().Lock()
+		defer c.system.Memory().Unlock()
 
 		if width == 1 {
-			c.mc.mem.data[pAddr] = uint8(v)
+			c.system.Memory().data[pAddr] = uint8(v)
 			return true
 		}
 
 		var bytes [8]uint8
 
-		if c.mc.mem.endian == EndianBig {
-			switch width {
-			case 2:
-				binary.BigEndian.PutUint16(bytes[:], uint16(v))
-			case 4:
-				binary.BigEndian.PutUint32(bytes[:], uint32(v))
-			case 8:
-				binary.BigEndian.PutUint64(bytes[:], v)
-			default:
-				panic("Invalid store width")
-			}
-		} else {
-			switch width {
-			case 2:
-				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
-			case 4:
-				binary.LittleEndian.PutUint32(bytes[:], uint32(v))
-			case 8:
-				binary.LittleEndian.PutUint64(bytes[:], v)
-			default:
-				panic("Invalid store width")
-			}
+		switch width {
+		case 2:
+			binary.LittleEndian.PutUint16(bytes[:], uint16(v))
+		case 4:
+			binary.LittleEndian.PutUint32(bytes[:], uint32(v))
+		case 8:
+			binary.LittleEndian.PutUint64(bytes[:], v)
+		default:
+			panic("Invalid store width")
 		}
 
-		copy(c.mc.mem.data[pAddr:], bytes[:width])
+		copy(c.system.Memory().data[pAddr:], bytes[:width])
 		return true
 	}
 
 	if hit := c.mc.dCache.store(pAddr, width, v); !hit {
 		c.mc.misses++
 		lineNumber := pAddr >> cacheLineOffsetBits
-		c.mc.mem.Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-		c.mc.mem.Unlock()
+		c.system.Memory().Lock()
+		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.system.Memory().Unlock()
 		c.mc.dCache.store(pAddr, width, v)
 	}
 
@@ -269,86 +214,11 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	return c.store(vAddr, 8, dw)
 }
 
-// Requires memory to be locked before calling
-func (c *Core) unsafeLoadAtomic(vAddr, width uint32) (bool, uint64) {
-	c.mc.accesses++
-	_, pAddr, flags := c.Translate(vAddr)
-
-	if flags&pageFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if flags&pageFlagWrite == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAccessFault)
-		return false, 0
-	}
-
-	if pAddr&(width-1) != 0 { // address alignment
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadAddressMisaligned)
-		return false, 0
-	}
-
-	lineNumber := pAddr >> cacheLineOffsetBits
-
-	// writebackLine if it is present and dirty
-	c.mc.dCache.writebackLine(lineNumber, c.mc.mem.data[:])
-
-	// invalidateLine if it is present
-	c.mc.dCache.invalidateLine(lineNumber)
-
-	// cache replace will refresh the line if present, or eject a random line
-	c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-
-	// load value from cache
-	return c.mc.dCache.load(pAddr, width)
-}
-
-// Requires memory to be locked before calling
-func (c *Core) unsafeStoreAtomic(vAddr, width uint32, v uint64) bool {
-	c.mc.accesses++
-	_, pAddr, flags := c.Translate(vAddr)
-
-	if flags&pageFlagValid == 0 { // address was invalid
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if flags&pageFlagWrite == 0 { // permissions
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStoreAccessFault)
-		return false
-	}
-
-	if pAddr&(width-1) != 0 { // address alignment
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStoreAddressMisaligned)
-		return false
-	}
-
-	lineNumber := pAddr >> cacheLineOffsetBits
-
-	// ensure line is in cache
-	c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.mc.mem.data[:])
-
-	// write data to cache
-	c.mc.dCache.store(pAddr, width, v)
-
-	// writeback line
-	c.mc.dCache.writebackLine(lineNumber, c.mc.mem.data[:])
-
-	return true
-}
-
 // Writes the data cache to memory
 func (c *Core) CacheWriteback() {
-	c.mc.mem.Lock()
-	c.mc.dCache.writebackAll(c.mc.mem.data[:])
-	c.mc.mem.Unlock()
+	c.system.Memory().Lock()
+	c.mc.dCache.writebackAll(c.system.Memory().data[:])
+	c.system.Memory().Unlock()
 }
 
 // Invalidates the data cache
@@ -361,12 +231,13 @@ func (c *Core) InstructionCacheInvalidate() {
 	c.mc.iCache.invalidateAll()
 }
 
-func (c *Core) ReadMemory(addr, bytes uint32) (error, []uint8) {
-	return c.mc.mem.Read(addr, bytes)
+// reads n bytes from the (possibly virtual) address addr and out
+func (c *Core) Read(addr, n uint32) (error, []uint8) {
+	return c.system.Memory().Read(addr, n)
 }
 
-func (c *Core) WriteMemory(addr uint32, data []uint8) (error, int) {
-	return c.mc.mem.Write(addr, data)
+func (c *Core) Write(addr uint32, data []uint8) (error, int) {
+	return c.system.Memory().Write(addr, data)
 }
 
 // Writeback and invalidate the data cache

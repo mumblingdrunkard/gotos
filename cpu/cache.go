@@ -40,7 +40,6 @@ type cache struct {
 	lines  [cacheLineCount]cacheLine
 	lookup map[uint32]*cacheLine
 	size   int
-	endian Endian
 }
 
 func (c *cache) load(address, width uint32) (bool, uint64) {
@@ -62,28 +61,15 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 			return true, uint64(line.data[offset])
 		}
 
-		if c.endian == EndianBig {
-			switch width {
-			case 2:
-				return true, uint64(binary.BigEndian.Uint16(line.data[offset : offset+2]))
-			case 4:
-				return true, uint64(binary.BigEndian.Uint32(line.data[offset : offset+4]))
-			case 8:
-				return true, binary.BigEndian.Uint64(line.data[offset : offset+8])
-			default:
-				panic("Invalid load width")
-			}
-		} else {
-			switch width {
-			case 2:
-				return true, uint64(binary.LittleEndian.Uint16(line.data[offset : offset+2]))
-			case 4:
-				return true, uint64(binary.LittleEndian.Uint32(line.data[offset : offset+4]))
-			case 8:
-				return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
-			default:
-				panic("Invalid load width")
-			}
+		switch width {
+		case 2:
+			return true, uint64(binary.LittleEndian.Uint16(line.data[offset : offset+2]))
+		case 4:
+			return true, uint64(binary.LittleEndian.Uint32(line.data[offset : offset+4]))
+		case 8:
+			return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
+		default:
+			panic("Invalid load width")
 		}
 	}
 
@@ -106,32 +92,17 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 
 		var bytes [8]uint8
 
-		if c.endian == EndianBig {
-			switch width {
-			case 1:
-				bytes[0] = uint8(v)
-			case 2:
-				binary.BigEndian.PutUint16(bytes[:], uint16(v))
-			case 4:
-				binary.BigEndian.PutUint32(bytes[:], uint32(v))
-			case 8:
-				binary.BigEndian.PutUint64(bytes[:], v)
-			default:
-				panic("Invalid store width")
-			}
-		} else {
-			switch width {
-			case 1:
-				bytes[0] = uint8(v)
-			case 2:
-				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
-			case 4:
-				binary.LittleEndian.PutUint32(bytes[:], uint32(v))
-			case 8:
-				binary.LittleEndian.PutUint64(bytes[:], v)
-			default:
-				panic("Invalid store width")
-			}
+		switch width {
+		case 1:
+			bytes[0] = uint8(v)
+		case 2:
+			binary.LittleEndian.PutUint16(bytes[:], uint16(v))
+		case 4:
+			binary.LittleEndian.PutUint32(bytes[:], uint32(v))
+		case 8:
+			binary.LittleEndian.PutUint64(bytes[:], v)
+		default:
+			panic("Invalid store width")
 		}
 
 		copy(line.data[offset:], bytes[0:width])
@@ -252,9 +223,8 @@ func (c *cache) invalidateAll() {
 	}
 }
 
-func newCache(endian Endian) cache {
+func newCache() cache {
 	return cache{
 		lookup: make(map[uint32]*cacheLine, cacheLineCount),
-		endian: endian,
 	}
 }

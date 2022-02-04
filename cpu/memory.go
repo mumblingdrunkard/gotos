@@ -7,15 +7,12 @@ import (
 
 const (
 	// 4 MiB of memory ought to be enough
-	MEMORY_SIZE = 1024 * 1024 * 4
+	MEMORY_SIZE = 1024 * 1024 * 1
 )
-
-type Endian uint8
 
 type Memory struct {
 	sync.Mutex
-	data   [MEMORY_SIZE]uint8
-	endian Endian
+	data [MEMORY_SIZE]uint8
 }
 
 // Write len(data) number of bytes into m.data from offset and out
@@ -49,8 +46,6 @@ func (m *Memory) Size() uint32 {
 	return MEMORY_SIZE
 }
 
-func NewMemory(endianness Endian) Memory {
-	return Memory{
-		endian: endianness,
-	}
+func NewMemory() Memory {
+	return Memory{}
 }

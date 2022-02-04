@@ -1,27 +1,40 @@
 package cpu
 
+import "encoding/binary"
+
 func (c *Core) lr_w(inst uint32) {
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
 	addr := c.reg[rs1]
-	_, pAddr, _ := c.Translate(addr)
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapLoadAddressMisaligned)
+		return
+	}
+
+	success, pAddr := c.Translate(addr, accessTypeLoad)
+
+	if !success {
+		return
+	}
+
 	pLine := pAddr >> cacheLineOffsetBits
 
 	// update rset
-	c.mc.rsets.Lock()
-	c.mc.mem.Lock()
-	success, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
+	c.system.ReservationSets().Lock()
+	c.system.Memory().Lock()
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+	c.mc.dCache.store(pAddr, 4, uint64(w)) // attempt to update value in cache, don't care about success
+	c.system.Memory().Unlock()
 	if success {
 		c.reg[rd] = w
 	}
-	c.mc.mem.Unlock()
 	if success {
-		m := c.mc.rsets.lookup[c.csr[Csr_MHARTID]]
+		m := c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]]
 		(*m)[pLine] = true
 	}
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) sc_w(inst uint32) {
@@ -31,20 +44,36 @@ func (c *Core) sc_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
-	_, pAddr, _ := c.Translate(addr)
+
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
+
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock()
+	c.system.ReservationSets().Lock()
 	// check rset
-	if _, ok := (*c.mc.rsets.lookup[c.csr[Csr_MHARTID]])[pLine]; ok {
-		c.mc.mem.Lock()
-		success := c.unsafeStoreAtomic(addr, 4, uint64(c.reg[rs2]))
-		c.mc.mem.Unlock()
+	if _, ok := (*c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]])[pLine]; ok {
+		var bytes [4]uint8
+		binary.LittleEndian.PutUint32(bytes[:], c.reg[rs2])
+
+		c.system.Memory().Lock()
+		copy(c.system.Memory().data[pAddr:], bytes[:])
+		c.mc.dCache.store(pAddr, 4, uint64(c.reg[rs2])) // attempt to update value in cache, don't care about success
+		c.system.Memory().Unlock()
 
 		if success {
 			c.reg[rd] = 0
 			// invalidate entries on all harts
-			c.mc.rsets.unsafeInvalidateAll(pLine)
+			c.system.ReservationSets().unsafeInvalidateAll(pLine)
 		}
 	} else {
 		// failed
@@ -52,8 +81,8 @@ func (c *Core) sc_w(inst uint32) {
 	}
 
 	// Regardless of success or failure, executing an SC.W instruction invalidates any reservation held by this hart.
-	delete(*c.mc.rsets.lookup[c.csr[Csr_MHARTID]], pLine)
-	c.mc.rsets.Unlock()
+	delete(*c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]], pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amoswap_w(inst uint32) {
@@ -62,24 +91,44 @@ func (c *Core) amoswap_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
+
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		if c.unsafeStoreAtomic(addr, 4, uint64(src)) {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := src
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amoadd_w(inst uint32) {
@@ -88,24 +137,43 @@ func (c *Core) amoadd_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		if c.unsafeStoreAtomic(addr, 4, uint64(src+w)) {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := w + src
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LR in all cores
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amoand_w(inst uint32) {
@@ -114,25 +182,43 @@ func (c *Core) amoand_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src&w))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := w & src
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amoor_w(inst uint32) {
@@ -141,25 +227,43 @@ func (c *Core) amoor_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src|w))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := w | src
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amoxor_w(inst uint32) {
@@ -168,25 +272,43 @@ func (c *Core) amoxor_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(src^w))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := w ^ src
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amomax_w(inst uint32) {
@@ -203,25 +325,43 @@ func (c *Core) amomax_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(max(int32(src), int32(w))))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := uint32(max(int32(w), int32(src)))
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amomaxu_w(inst uint32) {
@@ -238,26 +378,43 @@ func (c *Core) amomaxu_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
 
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(maxu(src, w)))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	// calculate new value
+	res := maxu(w, src)
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amomin_w(inst uint32) {
@@ -274,25 +431,43 @@ func (c *Core) amomin_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(min(int32(src), int32(w))))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := uint32(min(int32(w), int32(src)))
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }
 
 func (c *Core) amominu_w(inst uint32) {
@@ -309,23 +484,41 @@ func (c *Core) amominu_w(inst uint32) {
 	rs2 := (inst >> 20) & 0x1f
 
 	addr := c.reg[rs1]
+	// check alignment
+	if addr&3 != 0 {
+		c.trap(TrapStoreAddressMisaligned)
+		return
+	}
+
 	src := c.reg[rs2]
-	_, pAddr, _ := c.Translate(addr)
+	success, pAddr := c.Translate(addr, accessTypeStore)
+
+	if !success {
+		return
+	}
 	pLine := pAddr >> cacheLineOffsetBits
 
-	c.mc.rsets.Lock() // always lock rsets before mc.mem to avoid deadlock
-	c.mc.mem.Lock()
-	lsuccess, v := c.unsafeLoadAtomic(addr, 4)
-	w := uint32(v)
-	if lsuccess {
-		ssuccess := c.unsafeStoreAtomic(addr, 4, uint64(minu(src, w)))
-		if ssuccess {
-			c.reg[rd] = w
-		}
-	}
-	c.mc.mem.Unlock()
+	c.system.ReservationSets().Lock() // always lock rsets before system.Memory() to avoid deadlock
+	c.system.Memory().Lock()
+	// read bytes directly from memory
+	w := binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+
+	// calculate new value
+	res := minu(w, src)
+
+	// write value back to memory
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], res)
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+
+	// update cache
+	c.mc.dCache.store(pAddr, 4, uint64(res))
+
+	// store old value in rd
+	c.reg[rd] = w
+	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.mc.rsets.unsafeInvalidateAll(pLine)
-	c.mc.rsets.Unlock()
+	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().Unlock()
 }

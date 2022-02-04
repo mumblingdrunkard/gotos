@@ -2,7 +2,6 @@ package cpu
 
 import (
 	"fmt"
-	"math"
 	"sync"
 	"sync/atomic"
 )
@@ -50,16 +49,6 @@ const (
 	Reg_T6   = 31 //
 )
 
-const (
-	EndianLittle Endian = 0
-	EndianBig           = 1
-)
-
-type counter struct {
-	enable bool
-	value  uint64
-}
-
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
@@ -75,16 +64,15 @@ type Core struct {
 	// CSRs
 	csr [4096]uint32 // control and status registers
 	// function pointers
-	trapFn func(*Core)
-	bootFn func(*Core)
+	system System
 	// counters, used for predictable scheduling
 	counter counter
 	// timers?
 	// miscellaneous
 }
 
-func (c *Core) fetch() (bool, uint32) {
-	return c.loadInstruction(c.pc)
+func (c *Core) UnsafeBoot() {
+	c.system.HandleBoot(c)
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
@@ -95,7 +83,7 @@ func (c *Core) run(wg *sync.WaitGroup) {
 		panic("Attempted to call `run(...)` on a core that was not in the HALTED state")
 	}
 
-	c.bootFn(c)
+	c.system.HandleBoot(c)
 
 	wg.Done() // core has switched to running state
 
@@ -133,57 +121,12 @@ func (c *Core) StartAndSync(wg *sync.WaitGroup) {
 	go c.run(wg)
 }
 
-func (c *Core) UnsafeReset() {
-	// Reset registers
-	for i := range c.reg {
-		c.reg[i] = 0
-	}
-
-	c.reg[2] = math.MaxUint32
-
-	c.pc = 0
-	// c.state.Store(HALTED)
-}
-
-// Halts the core and waits for it to halt before returning
-// WARNING: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
-// Possible fix, check for halted state first, if so, return immediately
-// con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
-//   This is an acceptable solution.
-func (c *Core) HaltAndWait() {
-	if c.state.Load() == coreStateHalted {
-		return
-	}
-
-	if !c.state.CompareAndSwap(coreStateRunning, coreStateHalting) {
-		panic("Attempted to halt core that was not in RUNNING state")
-	}
-
-	c.Wait() // Wait for core to halt
-}
-
-// Halts the core, but leaves it to the caller to sync
-// WARNING: It is an error to halt a core that is not running, this is a potential issue if cores can halt themselves
-// Possible fix, check for halted state first, if so, return immediately
-// con: it would be an error to call halt if a go run() has been performed, but not yet scheduled so state is not yet RUNNING
-//   This is an acceptable solution.
-func (c *Core) HaltAndSync(wg *sync.WaitGroup) {
-	if !c.state.CompareAndSwap(coreStateRunning, coreStateHalting) {
-		panic("Attempted to halt core that was not in RUNNING state")
-	}
-
-	wg.Add(1)
-	go func() {
-		c.Wait()
-		wg.Done()
-	}()
-}
-
 func (c *Core) HaltIfRunning() bool {
 	return c.state.CompareAndSwap(coreStateRunning, coreStateHalting)
 }
 
 func (c *Core) UnsafeStep() {
+	c.jumped = false
 	// always increment cycle counter
 	// theoretically never overflows
 	cycle := uint64(c.csr[Csr_CYCLE]) | (uint64(c.csr[Csr_CYCLEH]) << 32)
@@ -201,7 +144,7 @@ func (c *Core) UnsafeStep() {
 		c.counter.value -= 1
 	}
 
-	success, inst := c.fetch()
+	success, inst := c.loadInstruction(c.pc)
 	if success {
 		c.execute(inst)
 		// TODO: execute may fail, don't increment retired
@@ -221,19 +164,18 @@ func (c *Core) UnsafeStep() {
 	if !c.jumped {
 		c.pc += 4
 	}
+
 	c.jumped = false
 }
 
-func NewCoreWithMemoryAndReservationSets(m *Memory, rs *ReservationSets, id uint32) (c Core) {
+func NewCore(id uint32) (c Core) {
 	c = Core{
-		mc: newMemoryController(m, rs),
+		mc: newMemoryController(),
 	}
 
 	c.csr[Csr_MHARTID] = id
 
 	c.state.Store(coreStateHalted)
-
-	c.UnsafeReset()
 
 	return
 }
@@ -253,17 +195,10 @@ func (c *Core) DumpRegisters() {
 
 	fmt.Println("Integer registers")
 	for i, r := range c.reg {
-		fmt.Printf("[%02d]: %08X\n", i, r)
+		fmt.Printf("[%02d]: %08X = %d\n", i, r, r)
 	}
 
-	// Dump all floating point registers
-	// Prints the HEX value as well as the f32 and f64 interpretation of that value
-	fmt.Println("Floating-point registers")
-	for i, r := range c.freg {
-		f := math.Float32frombits(uint32(r))
-		d := math.Float64frombits(r)
-		fmt.Printf("[%02d]: %016X\t%f\t%f\n", i, r, f, d)
-	}
+	fmt.Println("Counter: ", c.counter.value)
 }
 
 // --- Getters and setters ---
@@ -316,10 +251,6 @@ func (c *Core) SetFRegisters(a [32]uint64) {
 	copy(c.freg[:], a[:])
 }
 
-func (c *Core) SetBootHandler(handler func(*Core)) {
-	c.bootFn = handler
-}
-
-func (c *Core) SetTrapHandler(handler func(*Core)) {
-	c.trapFn = handler
+func (c *Core) SetSystem(system System) {
+	c.system = system
 }
