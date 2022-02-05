@@ -6,10 +6,9 @@ import (
 )
 
 type System struct {
-	Cores   []cpu.Core
-	running []uint32 // keep track of which PID is running on which core
-	memory  cpu.Memory
-	rsets   cpu.ReservationSets
+	Cores  []cpu.Core
+	memory cpu.Memory
+	rsets  cpu.ReservationSets
 }
 
 func (s *System) Memory() *cpu.Memory {
@@ -23,10 +22,9 @@ func (s *System) ReservationSets() *cpu.ReservationSets {
 // creates a new system with `n` cores
 func NewSystem(n int) *System {
 	sys := &System{
-		Cores:   make([]cpu.Core, n),
-		running: make([]uint32, n),
-		memory:  cpu.NewMemory(),
-		rsets:   cpu.NewReservationSets(n),
+		Cores:  make([]cpu.Core, n),
+		memory: cpu.NewMemory(),
+		rsets:  cpu.NewReservationSets(n),
 	}
 
 	for i := range sys.Cores {

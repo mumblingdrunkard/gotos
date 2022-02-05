@@ -101,9 +101,8 @@ func (s *System) handleBreakpoint(c *cpu.Core) {
 }
 
 func (s *System) handleEcallUMode(c *cpu.Core) {
-	// syscall number is placed in register a7
-	number := c.GetIRegister(cpu.Reg_A7)
-	s.syscall(c, number)
+	fmt.Printf("[core %d]: ECALL from User Mode\n", c.GetCSR(cpu.Csr_MHARTID))
+	c.HaltIfRunning()
 }
 
 func (s *System) handleInstructionPageFault(c *cpu.Core) {
