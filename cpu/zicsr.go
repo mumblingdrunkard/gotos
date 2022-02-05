@@ -102,10 +102,13 @@ const (
 	// Csr_MTVAL2   = 0x34B
 
 	// --- Machine configuration---
-	// -- unused --
+	// -- not implemented --
 
 	// --- Machine memory protection ---
-	// -- unused --
+	// -- not implemented --
+
+	// --- Supervisor Protection and Translation
+	Csr_SATP = 0x180
 )
 
 func (c *Core) csrrw(inst uint32) {
