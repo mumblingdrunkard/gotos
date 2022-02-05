@@ -1,0 +1,140 @@
+= Golang Teaching OS - gotos (wip)
+
+[NOTE]
+====
+The original idea was conceived of before I learned about _The Nachos Instructional Operating System_ <<nachos>>, but the core idea is very similar.
+====
+
+A framework to teach the concepts of Operating Systems.
+Build your very own operating system around emulated hardware.
+
+If an implementation follows the system specification, processes running ON the emulated, virtualized hardware should run flawlessly, albeit with better or worse performance depending on the implementation.
+This project is built around emulating a RISC-V CPU and some generic hardware for I/O.
+The CPU runs exclusively in User/Application Mode (see The RISC-V Instruction Set Manual: Volume II: Privileged Spec [rv5vol2] from https://riscv.org/technical/specifications/), handing control over to the surrounding system (written in Go) when elevated/enhanced privileges are needed such as when performing syscalls.
+
+I make it a point to follow the RISC-V specification as much as I can, taking inspiration wherever possible.
+The unprivileged specification should be followed to get user/application level compatibility.
+The privileged specification inspires, but is not followed.
+This is because priviliged RISC-V code does not exist in this framework.
+Instead, we write the surrounding parts of the operating system in Go.
+
+This is not intended to be a full RISC-V emulator.
+It will not run entire systems like xv6 in the way https://github.com/d0iasm/rvemu[rvemu] can. <<rvemu>>
+The project is intended as a framework for teaching important concepts of operating systems in a realistic, yet beginner-friendly manner.
+
+== Goals
+
+The goals of this project are as follows:
+
+- Provide a simple yet realistic framework that students can explore and modify with their own components.
+- Give students an intuition about how real hardware functions in tandem with the operating system to accomplish certain tasks.
+- Be modular enough to allow anything to be implemented on top of the emulated operating system.
+    - E.g. handling input, mmio, devices, writing a shell, a C runtime, etc.
+
+A long-term goal is to be a valid alternative to established teaching operating systems such as Xv6. <<xv6>>
+The advantages of Xv6 is the low-level and real nature of everything that is done in it, but it is challenging to students who have only ever used Python and JavaScript.
+Gotos aims to strike a middleground where students won't have to worry about their stacks overflowing or interrupts happening while doing kernel-level processing, but still be realistic enough to give students a good understanding of concepts such as paging and scheduling.
+
+== Roadmap
+
+=== Emulation
+
+==== riscv32g target
+
+- [*] RV32I base instructions (40/40)
+- [*] RV32M extension (8/8)
+- [*] RV32A extension (11/11)
+- [*] RV32F extension (26/26) non-compliant
+- [*] RV32D extension (26/26) non-compliant
+- [*] Zicsr extension (6/6)
+- [*] Zifencei extension (1/1)
+
+==== Peripherals
+
+- [ ] MMIO
+
+=== OS
+
+* [ ] Exception handling
+
+* [ ] Syscalls
+
+* [ ] C standard library
+
+* [ ] Scheduler
+
+* [ ] Memory management
+
+* [ ] Filesystem
+
+=== Applications
+
+* [ ] Shell
+
+== Current state
+
+I'm currently working on an ELF loader that can be used in the scheduler labs.
+
+== Fun jobs that need doing
+
+- [ ] Fully define the system interface (RISC-V EEI)
+
+- [ ] Write an ELF parser to load programs (look at `debug/elf`)
+
+- [ ] Define a framework for the process labs
+
+- [ ] Define a framework for the memory labs
+
+- [ ] Define a framework for the file system lab
+
+- [ ] Write companion book for gotos
+
+- [ ] Write companion book for the labs
+
+== Dirty (un-fun) jobs that need doing
+
+- [ ] Unit testing all instructions thoroughly.
+
+- [ ] Integration testing all instructions thoroughly.
+
+- [ ] Testing instruction decoding.
+
+- [ ] Write thorough amount of tests for all labs to ensure students implementations are working.
+
+== Contributing
+
+As this is an active thesis project, I'm uncertain of how much "help" I'm allowed.
+However, feel free to pull the project, inspect the code, check for bugs etc..
+If you find any bugs (highly ilkely), I would appreciate an issue on GitLab or just a mail to mumblingdrunkard@protonmail.com.
+
+== Authors and acknowledgment
+
+.Authors
+- mumblingdrunkard
+
+== License
+
+This project is licensed under the traditional MIT license.
+
+[bibliography]
+== Bibliography
+
+- [[[rv5vol1]]] Andrew Waterman and Krste Asanović.
+    _RISC-V ISA Specification: Volume I, Unprivileged ISA v. 20191213_,
+    https://riscv.org/technical/specifications/ .
+
+- [[[rv5vol2]]] Andrew Waterman, Krste Asanović, and John Hauser.
+    _RISC-V ISA Specification: Volume II, Privileged Spec v. 20211203_,
+    https://riscv.org/technical/specifications/ .
+
+- [[[nachos]]] Wayne A. Christopher, Steven J. Procter, and Thomas E. Anderson,
+    _The Nachos Instructional Operating System_,
+    https://homes.cs.washington.edu/~tom/nachos/ .
+
+- [[[rvemu]]] Asami Doi,
+    _rvemu: RISC-V Emulataor_,
+    https://github.com/d0iasm/rvemu
+
+- [[[xv6]]] Frans Kaashoek and Russ Cox,
+    _Xv6_
+    https://github.com/mit-pdos/xv6-riscv .
