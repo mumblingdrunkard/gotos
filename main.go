@@ -13,7 +13,7 @@ func main() {
 	sys.Scheduler = fifo
 
 	// load the program
-	sys.Load("c-programs/fib/main.text", 0x04000, 0x06000, 0)
+	sys.Load("c-programs/the-answer/main.text", 0x04000, 0x06000, 0)
 
 	// run the system
 	sys.Run()

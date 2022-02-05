@@ -174,6 +174,7 @@ func NewCore(id uint32) (c Core) {
 	}
 
 	c.csr[Csr_MHARTID] = id
+	c.reg[2] = MemorySize
 
 	c.state.Store(coreStateHalted)
 
