@@ -19,7 +19,6 @@ import (
 type memoryController struct {
 	iCache   cache
 	dCache   cache
-	mmu      mmu
 	misses   uint64
 	accesses uint64
 }
@@ -28,7 +27,6 @@ func newMemoryController() memoryController {
 	return memoryController{
 		dCache: newCache(),
 		iCache: newCache(),
-		mmu:    newMMU(),
 	}
 }
 
@@ -48,7 +46,7 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 		return false, 0
 	}
 
-	success, pAddr := c.Translate(vAddr, accessTypeInstructionFetch)
+	success, pAddr := c.translate(vAddr, accessTypeInstructionFetch)
 
 	if !success {
 		return false, 0
@@ -85,7 +83,7 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 		return false, 0
 	}
 
-	success, pAddr := c.Translate(vAddr, accessTypeLoad)
+	success, pAddr := c.translate(vAddr, accessTypeLoad)
 
 	if !success {
 		return false, 0
@@ -133,7 +131,7 @@ func (c *Core) store(vAddr, width uint32, v uint64) bool {
 		return false
 	}
 
-	success, pAddr := c.Translate(vAddr, accessTypeStore)
+	success, pAddr := c.translate(vAddr, accessTypeStore)
 
 	if !success {
 		return false

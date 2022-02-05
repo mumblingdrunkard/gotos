@@ -13,7 +13,7 @@ func (c *Core) lr_w(inst uint32) {
 		return
 	}
 
-	success, pAddr := c.Translate(addr, accessTypeLoad)
+	success, pAddr := c.translate(addr, accessTypeLoad)
 
 	if !success {
 		return
@@ -51,7 +51,7 @@ func (c *Core) sc_w(inst uint32) {
 		return
 	}
 
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -98,7 +98,7 @@ func (c *Core) amoswap_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -144,7 +144,7 @@ func (c *Core) amoadd_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -189,7 +189,7 @@ func (c *Core) amoand_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -234,7 +234,7 @@ func (c *Core) amoor_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -279,7 +279,7 @@ func (c *Core) amoxor_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -332,7 +332,7 @@ func (c *Core) amomax_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -385,7 +385,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -438,7 +438,7 @@ func (c *Core) amomin_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
@@ -491,7 +491,7 @@ func (c *Core) amominu_w(inst uint32) {
 	}
 
 	src := c.reg[rs2]
-	success, pAddr := c.Translate(addr, accessTypeStore)
+	success, pAddr := c.translate(addr, accessTypeStore)
 
 	if !success {
 		return
