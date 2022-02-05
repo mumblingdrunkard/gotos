@@ -6,11 +6,10 @@ import (
 )
 
 type System struct {
-	cores     []cpu.Core
-	running   []uint32 // keep track of which PID is running on which core
-	Scheduler Scheduler
-	memory    cpu.Memory
-	rsets     cpu.ReservationSets
+	Cores   []cpu.Core
+	running []uint32 // keep track of which PID is running on which core
+	memory  cpu.Memory
+	rsets   cpu.ReservationSets
 }
 
 func (s *System) Memory() *cpu.Memory {
@@ -24,15 +23,15 @@ func (s *System) ReservationSets() *cpu.ReservationSets {
 // creates a new system with `n` cores
 func NewSystem(n int) *System {
 	sys := &System{
-		cores:   make([]cpu.Core, n),
+		Cores:   make([]cpu.Core, n),
 		running: make([]uint32, n),
 		memory:  cpu.NewMemory(),
 		rsets:   cpu.NewReservationSets(n),
 	}
 
-	for i := range sys.cores {
-		sys.cores[i] = cpu.NewCore(uint32(i))
-		sys.cores[i].SetSystem(sys)
+	for i := range sys.Cores {
+		sys.Cores[i] = cpu.NewCore(uint32(i))
+		sys.Cores[i].SetSystem(sys)
 	}
 
 	return sys
@@ -45,32 +44,32 @@ func (s *System) Run() {
 }
 
 func (s *System) Boot() {
-	s.cores[0].UnsafeBoot()
+	s.Cores[0].UnsafeBoot()
 }
 
 func (s *System) StepAndDump() {
-	s.cores[0].UnsafeStep()
-	s.cores[0].DumpRegisters()
+	s.Cores[0].UnsafeStep()
+	s.Cores[0].DumpRegisters()
 }
 
 func (s *System) Start() {
 	var wg sync.WaitGroup
-	for i := range s.cores {
-		s.cores[i].StartAndSync(&wg)
+	for i := range s.Cores {
+		s.Cores[i].StartAndSync(&wg)
 	}
 	wg.Wait()
 }
 
 func (s *System) Stop() {
-	for i := range s.cores {
-		s.cores[i].HaltIfRunning()
+	for i := range s.Cores {
+		s.Cores[i].HaltIfRunning()
 	}
 
 	s.Wait()
 }
 
 func (s *System) Wait() {
-	for i := range s.cores {
-		s.cores[i].Wait()
+	for i := range s.Cores {
+		s.Cores[i].Wait()
 	}
 }

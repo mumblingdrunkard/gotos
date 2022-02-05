@@ -8,13 +8,14 @@ func main() {
 	// create a system with 1 core
 	sys := system.NewSystem(1)
 
-	// create a simple batch scheduler queue (FIFO)
-	fifo := &system.FIFO{}
-	sys.Scheduler = fifo
-
-	// load the program
-	sys.Load("c-programs/the-answer/main.text", 0x04000, 0x06000, 0)
+	sys.Memory().Write(0, []uint8{
+		0x93, 0x02, 0x10, 0x01,
+		0x13, 0x03, 0x90, 0x01,
+		0x33, 0x85, 0x62, 0x00,
+	})
 
 	// run the system
-	sys.Run()
+	for i := 0; i < 3; i++ {
+		sys.StepAndDump()
+	}
 }
