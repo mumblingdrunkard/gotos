@@ -107,6 +107,14 @@ As this is an active thesis project, I'm uncertain of how much "help" I'm allowe
 However, feel free to pull the project, inspect the code, check for bugs etc..
 If you find any bugs (highly ilkely), I would appreciate an issue on GitLab or just a mail to mumblingdrunkard@protonmail.com.
 
+== Book
+
+I am writing a book to accompany this project which will serve as a walkthrough of all the lab-assignments as well as getting started with gotos in general.
+
+If you'd like to help be out by reading it and trying out the exercises/labs, send me an e-mail and I'll set up for you to get access to spurious versions of the book.
+Please do not distribute the book publicly as it may contain answers that should be kept confidential from students.
+If you share it, I will have to remove or create new exercises.
+
 == Authors and acknowledgment
 
 .Authors
