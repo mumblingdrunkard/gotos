@@ -19,6 +19,8 @@ import (
 type memoryController struct {
 	iCache   cache
 	dCache   cache
+	tlb0     tlb
+	tlb1     tlb
 	misses   uint64
 	accesses uint64
 }
@@ -27,6 +29,7 @@ func newMemoryController() memoryController {
 	return memoryController{
 		dCache: newCache(),
 		iCache: newCache(),
+		tlb0:   newTLB(),
 	}
 }
 
@@ -212,6 +215,27 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	return c.store(vAddr, 8, dw)
 }
 
+// load a word without translating the address first. Used for the page table walker
+func (c *Core) loadWordPhysical(pAddr uint32) (bool, uint32) {
+	if !cacheEnable {
+		c.system.Memory().Lock()
+		defer c.system.Memory().Unlock()
+		return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+	}
+
+	if hit, v := c.mc.dCache.load(pAddr, 4); !hit {
+		c.mc.misses++
+		lineNumber := pAddr >> cacheLineOffsetBits
+		c.system.Memory().Lock()
+		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.system.Memory().Unlock()
+		_, v := c.mc.dCache.load(pAddr, 4)
+		return true, uint32(v)
+	} else {
+		return true, uint32(v)
+	}
+}
+
 // Writes the data cache to memory
 func (c *Core) CacheWriteback() {
 	c.system.Memory().Lock()
@@ -229,8 +253,14 @@ func (c *Core) InstructionCacheInvalidate() {
 	c.mc.iCache.invalidateAll()
 }
 
+func (c *Core) TLBFlush() {
+	c.mc.tlb1.flushAll()
+	c.mc.tlb0.flushAll()
+}
+
 // reads n bytes from the (possibly virtual) address addr and out
 func (c *Core) Read(addr, n uint32) (error, []uint8) {
+
 	return c.system.Memory().Read(addr, n)
 }
 
