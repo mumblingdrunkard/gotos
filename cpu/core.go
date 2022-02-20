@@ -49,12 +49,18 @@ const (
 	Reg_T6   = 31 //
 )
 
+type counter struct {
+	enable bool
+	value  uint64
+}
+
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
 	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
 	bcm    sync.Mutex
 	state  atomic.Value // can be HALTED, HALTING, or RUNNING
+	vmaUpd atomic.Value
 	jumped bool
 	mc     memoryController
 	// normal registers (save on context switch)
@@ -69,6 +75,10 @@ type Core struct {
 	counter counter
 	// timers?
 	// miscellaneous
+}
+
+func (c *Core) fetch() (bool, uint32) {
+	return c.loadInstruction(c.pc)
 }
 
 func (c *Core) UnsafeBoot() {
@@ -93,6 +103,12 @@ func (c *Core) run(wg *sync.WaitGroup) {
 		if c.state.Load() == coreStateHalting {
 			c.state.Store(coreStateHalted)
 			break
+		}
+
+		if c.vmaUpd.Load() == true {
+			c.vmaUpd.Store(false)
+			c.TranslationCacheInvalidate()
+			c.TLBInvalidate()
 		}
 
 		c.UnsafeStep()
@@ -144,7 +160,7 @@ func (c *Core) UnsafeStep() {
 		c.counter.value -= 1
 	}
 
-	success, inst := c.loadInstruction(c.pc)
+	success, inst := c.fetch()
 	if success {
 		c.execute(inst)
 		// TODO: execute may fail, don't increment retired
@@ -174,7 +190,6 @@ func NewCore(id uint32) (c Core) {
 	}
 
 	c.csr[Csr_MHARTID] = id
-	c.reg[2] = MemorySize
 
 	c.state.Store(coreStateHalted)
 
@@ -196,10 +211,19 @@ func (c *Core) DumpRegisters() {
 
 	fmt.Println("Integer registers")
 	for i, r := range c.reg {
-		fmt.Printf("[%02d]: %08X = %d\n", i, r, r)
+		fmt.Printf("[%02d]: %08X\n", i, r)
 	}
 
 	fmt.Println("Counter: ", c.counter.value)
+
+	// Dump all floating point registers
+	// Prints the HEX value as well as the f32 and f64 interpretation of that value
+	// fmt.Println("Floating-point registers")
+	// for i, r := range c.freg {
+	// 	f := math.Float32frombits(uint32(r))
+	// 	d := math.Float64frombits(r)
+	// 	fmt.Printf("[%02d]: %016X\t%f\t%f\n", i, r, f, d)
+	// }
 }
 
 // --- Getters and setters ---

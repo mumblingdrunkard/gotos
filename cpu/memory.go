@@ -7,12 +7,12 @@ import (
 
 const (
 	// 4 MiB of memory ought to be enough
-	MemorySize = 1024 * 1024 * 1
+	MEMORY_SIZE = 1024 * 1024 * 1
 )
 
 type Memory struct {
 	sync.Mutex
-	data [MemorySize]uint8
+	data [MEMORY_SIZE]uint8
 }
 
 // Write len(data) number of bytes into m.data from offset and out
@@ -43,7 +43,7 @@ func (m *Memory) Read(address, n uint32) (error, []uint8) {
 }
 
 func (m *Memory) Size() uint32 {
-	return MemorySize
+	return MEMORY_SIZE
 }
 
 func NewMemory() Memory {

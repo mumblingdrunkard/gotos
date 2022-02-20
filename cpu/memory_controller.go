@@ -17,18 +17,21 @@ import (
 )
 
 type memoryController struct {
-	iCache   cache
-	dCache   cache
-	tlb0     tlb
-	tlb1     tlb
-	misses   uint64
-	accesses uint64
+	iCache cache // instruction cache
+	dCache cache // data cache
+	tCache cache // translation cache
+	tlb0   tlb   // level 0 tlb - normal pages
+
+	// metrics
+	cacheMisses uint64
+	accesses    uint64
 }
 
 func newMemoryController() memoryController {
 	return memoryController{
 		dCache: newCache(),
 		iCache: newCache(),
+		tCache: newCache(),
 		tlb0:   newTLB(),
 	}
 }
@@ -62,10 +65,10 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	}
 
 	if hit, instruction := c.mc.iCache.load(pAddr, 4); !hit {
-		c.mc.misses++
+		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
-		c.mc.iCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.mc.iCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
 		c.system.Memory().Unlock()
 		_, instruction := c.mc.iCache.load(pAddr, 4)
 		inst = uint32(instruction)
@@ -113,10 +116,10 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	}
 
 	if hit, v := c.mc.dCache.load(pAddr, width); !hit {
-		c.mc.misses++
+		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.mc.dCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
 		c.system.Memory().Unlock()
 		_, v := c.mc.dCache.load(pAddr, width)
 		return true, v
@@ -167,10 +170,10 @@ func (c *Core) store(vAddr, width uint32, v uint64) bool {
 	}
 
 	if hit := c.mc.dCache.store(pAddr, width, v); !hit {
-		c.mc.misses++
+		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.mc.dCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
 		c.system.Memory().Unlock()
 		c.mc.dCache.store(pAddr, width, v)
 	}
@@ -217,19 +220,20 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 
 // load a word without translating the address first. Used for the page table walker
 func (c *Core) loadWordPhysical(pAddr uint32) (bool, uint32) {
+	c.mc.accesses++
 	if !cacheEnable {
 		c.system.Memory().Lock()
 		defer c.system.Memory().Unlock()
 		return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
 	}
 
-	if hit, v := c.mc.dCache.load(pAddr, 4); !hit {
-		c.mc.misses++
+	if hit, v := c.mc.tCache.load(pAddr, 4); !hit {
+		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
-		c.mc.dCache.replaceRandom(lineNumber, cacheFlagNone, c.system.Memory().data[:])
+		c.mc.tCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
 		c.system.Memory().Unlock()
-		_, v := c.mc.dCache.load(pAddr, 4)
+		_, v := c.mc.tCache.load(pAddr, 4)
 		return true, uint32(v)
 	} else {
 		return true, uint32(v)
@@ -237,14 +241,14 @@ func (c *Core) loadWordPhysical(pAddr uint32) (bool, uint32) {
 }
 
 // Writes the data cache to memory
-func (c *Core) CacheWriteback() {
+func (c *Core) DataCacheWriteback() {
 	c.system.Memory().Lock()
 	c.mc.dCache.writebackAll(c.system.Memory().data[:])
 	c.system.Memory().Unlock()
 }
 
 // Invalidates the data cache
-func (c *Core) CacheInvalidate() {
+func (c *Core) DataCacheInvalidate() {
 	c.mc.dCache.invalidateAll()
 }
 
@@ -253,9 +257,16 @@ func (c *Core) InstructionCacheInvalidate() {
 	c.mc.iCache.invalidateAll()
 }
 
-func (c *Core) TLBFlush() {
-	c.mc.tlb1.flushAll()
-	c.mc.tlb0.flushAll()
+func (c *Core) TLBInvalidate() {
+	c.mc.tlb0.invalidateAll()
+}
+
+func (c *Core) TranslationCacheInvalidate() {
+	c.mc.tCache.invalidateAll()
+}
+
+func (c *Core) SignalVirtualMemoryUpdates() {
+	c.vmaUpd.Store(true)
 }
 
 // reads n bytes from the (possibly virtual) address addr and out
@@ -270,12 +281,12 @@ func (c *Core) Write(addr uint32, data []uint8) (error, int) {
 
 // Writeback and invalidate the data cache
 func (c *Core) CacheWritebackAndInvalidate() {
-	c.CacheWriteback()
-	c.CacheInvalidate()
+	c.DataCacheWriteback()
+	c.DataCacheInvalidate()
 }
 
 func (c *Core) Misses() uint64 {
-	return c.mc.misses
+	return c.mc.cacheMisses
 }
 
 func (c *Core) Accesses() uint64 {

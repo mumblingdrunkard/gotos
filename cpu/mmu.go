@@ -1,5 +1,7 @@
 package cpu
 
+import "fmt"
+
 // TODO Should mmu be moved into its own package perhaps?
 
 const (
@@ -52,30 +54,57 @@ func (c *Core) translate(vAddr uint32, aType accessType) (success bool, pAddr ui
 	// get the satp register
 	satp := c.csr[Csr_SATP]
 
+	success = true
 	if satp&0x80000000 == 0 { // bare mode, no translation or protection
 		return true, vAddr
 	}
 
-	vpn1 := vAddr >> 22
 	vpn0 := vAddr >> 12
 
 	pte := uint32(0)
 	i := 0
 
-	// check tlb1
-	if present, p := c.mc.tlb1.load(vpn1); present {
-		// Superpage
-		pte = p
-		i = 1
-	} else if present, p := c.mc.tlb0.load(vpn0); present {
+	if present, p := c.mc.tlb0.load(vpn0); present {
 		// normal page
 		pte = p
 		i = 0
 	} else {
+		fmt.Println("Missed")
 		// not in tlb, walk table
 		j, p := c.walkTable(vpn0)
+		i = j
 
 		if j < 0 {
+			success = false
+		}
+
+		pte = p
+
+		// perform checks after walking the page table.
+		// This ensures that only valid entries are stored in the TLB, ensuring
+		// the hot-path stays largely without much checking.
+
+		// 5. A leaf PTE has been found. Determine if the requested memory access
+		// is allowed by the pte.r, pte.w, pte.x, and pte.u bits, given the current
+		// privilege mode and the value of the SUM and MXR fields of the mstatus
+		// register. If not, stop and raise a page-fault exception corresponding to
+		// the original access type.
+
+		// 7. If pte.a = 0, or if the original memory access is a store and pte.d = 0,
+		// either raise a page-fault exception corresponding to the original access
+		// type...
+
+		success = success && pte&pageFlagUser != 0
+
+		if aType == accessTypeInstructionFetch && success {
+			success = pte&pageFlagExec != 0 && pte&pageFlagAccessed != 0
+		} else if aType == accessTypeLoad && success {
+			success = pte&pageFlagRead != 0 && pte&pageFlagAccessed != 0
+		} else if aType == accessTypeStore && success {
+			success = pte&pageFlagWrite != 0 && pte&pageFlagAccessed != 0 && pte&pageFlagDirty != 0
+		}
+
+		if !success {
 			c.csr[Csr_MTVAL] = vAddr
 			switch aType {
 			case accessTypeLoad:
@@ -90,129 +119,24 @@ func (c *Core) translate(vAddr uint32, aType accessType) (success bool, pAddr ui
 			return false, 0
 		}
 
-		pte = p
-		i = j
 		// store the pte in table as well
-		if i == 0 {
+		if j == 0 {
 			c.mc.tlb0.store(vpn0, pte)
-		} else if i == 1 {
-			c.mc.tlb1.store(vpn1, pte)
-		} else {
-			panic("Invalid page size.")
+		} else if j == 1 {
+			// treat superpage entries as several entries of normal pages instead
+			pte |= (vAddr & 0x003FF000) >> 2 // edit the PTE
+			c.mc.tlb0.store(vpn0, pte)
 		}
-	}
 
-	if pte == 0 {
-		c.csr[Csr_MTVAL] = vAddr
-		switch aType {
-		case accessTypeLoad:
-			c.trap(TrapLoadPageFault)
-		case accessTypeStore:
-			c.trap(TrapStorePageFault)
-		case accessTypeInstructionFetch:
-			c.trap(TrapInstructionPageFault)
-		default:
-			panic("Invalid access type.")
-		}
-		return false, 0
-	}
-
-	// fmt.Println("Translated ", vAddr, " to ", pAddr, "!")
-
-	// 5. A leaf PTE has been found. Determine if the requested memory access
-	// is allowed by the pte.r, pte.w, pte.x, and pte.u bits, given the current
-	// privilege mode and the value of the SUM and MXR fields of the mstatus
-	// register. If not, stop and raise a page-fault exception corresponding to
-	// the original access type.
-	if pte&pageFlagUser == 0 {
-		// translate is never called by anything but the core and the core
-		// always runs in user mode
-		c.csr[Csr_MTVAL] = vAddr
-		switch aType {
-		case accessTypeLoad:
-			c.trap(TrapLoadPageFault)
-		case accessTypeStore:
-			c.trap(TrapStorePageFault)
-		case accessTypeInstructionFetch:
-			c.trap(TrapInstructionPageFault)
-		default:
-			panic("Invalid access type.")
-		}
-		return false, 0
-	}
-
-	if aType == accessTypeLoad && pte&pageFlagRead == 0 {
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapLoadPageFault)
-		return false, 0
-	}
-
-	if aType == accessTypeStore && pte&pageFlagWrite == 0 {
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
-		return false, 0
-	}
-
-	if aType == accessTypeInstructionFetch && pte&pageFlagExec == 0 {
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapInstructionPageFault)
-		return false, 0
-	}
-
-	// 6. If i > 0 and pte.ppn[i − 1 : 0] ̸= 0, this is a misaligned
-	// superpage; stop and raise a page-fault exception corresponding to
-	// the original access type.
-	if i > 0 && pte&0x000FFC00 != 0 {
-		// misaligned superpage
-		c.csr[Csr_MTVAL] = vAddr
-		switch aType {
-		case accessTypeLoad:
-			c.trap(TrapLoadPageFault)
-		case accessTypeStore:
-			c.trap(TrapStorePageFault)
-		case accessTypeInstructionFetch:
-			c.trap(TrapInstructionPageFault)
-		default:
-			panic("Invalid access type.")
-		}
-		return false, 0
-	}
-
-	// 7. If pte.a = 0, or if the original memory access is a store and pte.d = 0,
-	// either raise a page-fault exception corresponding to the original access
-	// type...
-	if pte&pageFlagAccessed == 0 {
-		// should be accessed, but isn't
-		c.csr[Csr_MTVAL] = vAddr
-		switch aType {
-		case accessTypeLoad:
-			c.trap(TrapLoadPageFault)
-		case accessTypeStore:
-			c.trap(TrapStorePageFault)
-		case accessTypeInstructionFetch:
-			c.trap(TrapInstructionPageFault)
-		default:
-			panic("Invalid access type.")
-		}
-		return false, 0
-	}
-
-	if aType == accessTypeStore && pte&pageFlagDirty == 0 {
-		// should be dirty, but isn't
-		c.csr[Csr_MTVAL] = vAddr
-		c.trap(TrapStorePageFault)
-		return false, 0
+		pAddr = ((pte & 0xFFFFFC00) << 2) | (vAddr & 0x00000FFF)
 	}
 
 	// 8. The translation is successful. The translated physical address is given
 	// as follows: pa.pgoff = va.pgoff. If i > 0, then this is a superpage
 	// translation and
 	// pa.ppn[i − 1 : 0] = va.vpn[i − 1 : 0]. pa.ppn[LEVELS − 1 : i] = pte.ppn[LEVELS − 1 : i].
-	if i == 1 {
-		pAddr = ((pte & 0xFFF00000) << 2) | (vAddr & 0x003FFFFF)
-	} else {
-		pAddr = ((pte & 0xFFFFFC00) << 2) | (vAddr & 0x00000FFF)
-	}
+
+	pAddr = ((pte & 0xFFFFFC00) << 2) | (vAddr & (0xFFFFFFFF >> (20 - 10*i)))
 
 	return true, pAddr
 }
@@ -263,6 +187,13 @@ func (c *Core) walkTable(vpn uint32) (int, uint32) {
 			a = (pte >> 10) * pagesize
 			// fmt.Println("Next level")
 			continue
+		}
+
+		// 6. If i > 0 and pte.ppn[i − 1 : 0] ̸= 0, this is a misaligned
+		// superpage; stop and raise a page-fault exception corresponding to
+		// the original access type.
+		if i > 0 && pte&0x000FFC00 != 0 {
+			return i, 0
 		}
 
 		// fmt.Printf("%08x\n", pte)

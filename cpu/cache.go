@@ -2,15 +2,10 @@
 // Caching helps reduce lock contention when multiple processors are running.
 // This introduces the problem of cache coherence, which is creatively solved in other ways.
 
-// WARNING: man physically addressed caches really suck when they may be written back
-// May have to store virtual line numbers as well and translate to physical address before writing back
-// This may cause several cache misses.
-
 package cpu
 
 import (
 	"encoding/binary"
-	"math/rand"
 )
 
 // Cache constants
@@ -18,7 +13,9 @@ const (
 	cacheLineLength     = 64   // must be equal to 2^CACHE_LINE_OFFSET_BITS (^ being power, not xor)
 	cacheLineOffsetBits = 6    // how many bits of the address are used for the offset within a cache-line
 	cacheLineOffsetMask = 0x3F // used to extract the offset in a cache line from an address
-	cacheLineCount      = 64   // how many cache lines the cache contains by default
+	cacheLineCount      = 256  // how many cache lines the cache contains by default
+	cacheTryDepth       = 2
+	cacheInvalidEntry   = 0xFFFFFFFF
 )
 
 // Cache flags
@@ -36,40 +33,38 @@ type cacheLine struct {
 	data   [cacheLineLength]uint8
 }
 
+// cache is implemented as a hash-map with quadratic probing.
+// It will try probing a set number of times before giving up.
 type cache struct {
-	lines  [cacheLineCount]cacheLine
-	lookup map[uint32]*cacheLine
-	size   int
+	lines [cacheLineCount]cacheLine
 }
 
 func (c *cache) load(address, width uint32) (bool, uint64) {
-	lineNumber := address >> cacheLineOffsetBits
-
 	// Misaligned load from cache will always fail
 	if address&(width-1) != 0 {
 		return false, 0
 	}
 
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false, 0
-		}
+	lineNumber := address >> cacheLineOffsetBits
+	offset := address & cacheLineOffsetMask
 
-		offset := address & cacheLineOffsetMask
+	for i := uint32(0); i < cacheTryDepth; i++ {
+		try := (lineNumber + i*i) & 0xFF
+		if c.lines[try].number == lineNumber {
+			if c.lines[try].flags&cacheFlagStale != 0 {
+				return false, 0
+			}
 
-		if width == 1 {
-			return true, uint64(line.data[offset])
-		}
-
-		switch width {
-		case 2:
-			return true, uint64(binary.LittleEndian.Uint16(line.data[offset : offset+2]))
-		case 4:
-			return true, uint64(binary.LittleEndian.Uint32(line.data[offset : offset+4]))
-		case 8:
-			return true, binary.LittleEndian.Uint64(line.data[offset : offset+8])
-		default:
-			panic("Invalid load width")
+			switch width {
+			case 2:
+				return true, uint64(binary.LittleEndian.Uint16(c.lines[try].data[offset : offset+2]))
+			case 4:
+				return true, uint64(binary.LittleEndian.Uint32(c.lines[try].data[offset : offset+4]))
+			case 8:
+				return true, binary.LittleEndian.Uint64(c.lines[try].data[offset : offset+8])
+			default:
+				panic("Invalid load width")
+			}
 		}
 	}
 
@@ -83,110 +78,90 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 	}
 
 	lineNumber := address >> cacheLineOffsetBits
-	if line, present := c.lookup[lineNumber]; present {
-		if line.flags&cacheFlagStale != 0 {
-			return false
+	offset := address & cacheLineOffsetMask
+
+	for i := uint32(0); i < cacheTryDepth; i++ {
+		try := (lineNumber + i*i) & 0xFF
+		if c.lines[try].number == lineNumber {
+			if c.lines[try].flags&cacheFlagStale != 0 {
+				return false
+			}
+
+			var bytes [8]uint8
+
+			switch width {
+			case 1:
+				bytes[0] = uint8(v)
+			case 2:
+				binary.LittleEndian.PutUint16(bytes[:], uint16(v))
+			case 4:
+				binary.LittleEndian.PutUint32(bytes[:], uint32(v))
+			case 8:
+				binary.LittleEndian.PutUint64(bytes[:], v)
+			default:
+				panic("Invalid store width")
+			}
+
+			copy(c.lines[try].data[offset:], bytes[0:width])
+			c.lines[try].flags |= cacheFlagDirty
+			return true
 		}
-
-		offset := address & cacheLineOffsetMask
-
-		var bytes [8]uint8
-
-		switch width {
-		case 1:
-			bytes[0] = uint8(v)
-		case 2:
-			binary.LittleEndian.PutUint16(bytes[:], uint16(v))
-		case 4:
-			binary.LittleEndian.PutUint32(bytes[:], uint32(v))
-		case 8:
-			binary.LittleEndian.PutUint64(bytes[:], v)
-		default:
-			panic("Invalid store width")
-		}
-
-		copy(line.data[offset:], bytes[0:width])
-		line.flags |= cacheFlagDirty
-		return true
 	}
+
 	return false
 }
 
-// Loads a cache-line into cache.
-// Behaviour depends on the state of the cache.
-// If the cache is not full: selects the next open slot in the line-storage and
-// loads the cache-line into it.
-// This is done by copying the line data from `src` (usually mc.mem)
-//
-// If the cache-line is already present, but it is stale: refreshes that line.
-//
-// If the cache is full and the cache-line is not present, selects a random line
-// to be evicted.
-// If this line is dirty, the line is first written back before
-// it is replaced with the new data.
-//
-// Returns true if a replacement/refresh was performed, false otherwise.
-// Assumes exclusive access to the source slice.
-func (c *cache) replaceRandom(lineNumber uint32, flags uint8, src []uint8) bool {
-	// if line is already present
-	if _, present := c.lookup[lineNumber]; present {
-		line := c.lookup[lineNumber]
+// attempts to load a line into cache
+// if it cannot find a vacant slot after a given number of probings, it ejects
+// all visited slots and loads the line into the first of these slots.
+func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
+	for i := uint32(0); i < cacheTryDepth; i++ {
+		try := (lineNumber + i*i) & 0xFF
+		if c.lines[try].number == lineNumber {
+			if c.lines[try].flags&cacheFlagStale == 0 {
+				return false
+			}
 
-		if line.flags&cacheFlagStale == 0 { // if line isn't stale
-			return false // don't do anything
+			address := lineNumber << cacheLineOffsetBits
+			copy(c.lines[try].data[:], src[address:address+cacheLineLength])
+			c.lines[try].flags &= (cacheFlagDirty ^ cacheFlagStale ^ cacheFlagAll) // remove stale and dirty bits
+			return true
 		}
-
-		address := lineNumber << cacheLineOffsetBits
-		copy(line.data[:], src[address:address+cacheLineLength])
-		line.flags &= (cacheFlagDirty ^ cacheFlagStale ^ cacheFlagAll) // remove stale and dirty bits
-
-		return true
 	}
 
-	// if cache isn't full, just take the next open space
-	// pick a random line to eject from cache
-	target := rand.Intn(cacheLineCount)
-	if c.size < cacheLineCount {
-		target = c.size
-		defer func() { c.size += 1 }()
+	// line was not present, try to find a place for it
+	for i := uint32(0); i < cacheTryDepth; i++ {
+		try := (lineNumber + i*i) & 0xFF
+		if c.lines[try].number == cacheInvalidEntry {
+			address := lineNumber << cacheLineOffsetBits
+			c.lines[try].number = lineNumber
+			copy(c.lines[try].data[:], src[address:address+cacheLineLength])
+			c.lines[try].flags &= (cacheFlagDirty ^ cacheFlagStale ^ cacheFlagAll) // remove stale and dirty bits
+			return true
+		}
 	}
 
-	eject := &c.lines[target]
-	address := eject.number << cacheLineOffsetBits
-	delete(c.lookup, eject.number) // delete the old entry, no-op if there is no old entry
-
-	// check if the ejected line is dirty and not stale, if so, writeback
-	if eject.flags&cacheFlagDirty != 0 && eject.flags&cacheFlagStale == 0 {
-		copy(src[address:], eject.data[:])
+	// no vacant slots, invalidate all slots
+	for i := uint32(0); i < cacheTryDepth; i++ {
+		try := (lineNumber + i*i) & 0xFF
+		if c.lines[try].flags&cacheFlagDirty == 1 {
+			address := c.lines[try].number << cacheLineOffsetBits
+			copy(src[address:], c.lines[try].data[:])
+		}
+		c.lines[try].number = cacheInvalidEntry
+		c.lines[try].flags = 0
 	}
 
-	// writes the line to cache
-	address = lineNumber << cacheLineOffsetBits
-	copy(eject.data[:], src[address:address+cacheLineLength])
-	eject.flags = flags
-	eject.number = lineNumber
-
-	// update the lookup
-	c.lookup[lineNumber] = eject // add new entry
-
+	// finally, a vacant space is guaranteed
+	try := lineNumber & 0xFF
+	address := lineNumber << cacheLineOffsetBits
+	c.lines[try].number = lineNumber
+	copy(c.lines[try].data[:], src[address:address+cacheLineLength])
+	c.lines[try].flags &= (cacheFlagDirty ^ cacheFlagStale ^ cacheFlagAll) // remove stale and dirty bits
 	return true
 }
 
-// writes a cache-line if present
-func (c *cache) writebackLine(lineNumber uint32, dst []uint8) {
-	if _, present := c.lookup[lineNumber]; present {
-		line := c.lookup[lineNumber]
-
-		if line.flags&cacheFlagDirty != 0 && line.flags&cacheFlagStale == 0 {
-			address := line.number << cacheLineOffsetBits
-			copy(dst[address:], line.data[:])
-			// clear the dirty bit
-			line.flags &= (cacheFlagDirty ^ cacheFlagAll)
-		}
-	}
-}
-
-// Writes back all cache-lines back to `dst`.
+// Writes all cache-lines back to `dst`.
 // Helpful if you want all other cores to see changes made by this core.
 func (c *cache) writebackAll(dst []uint8) int {
 	written := 0
@@ -205,15 +180,6 @@ func (c *cache) writebackAll(dst []uint8) int {
 	return written
 }
 
-// Invalidates a cache-line if present
-func (c *cache) invalidateLine(lineNumber uint32) {
-	if _, present := c.lookup[lineNumber]; present {
-		line := c.lookup[lineNumber]
-
-		line.flags |= cacheFlagStale // set stale bit, forces refresh on next access
-	}
-}
-
 // Marks all cache-lines as stale.
 // Helpful if you want to guarantee that you can see updates made from other cores.
 func (c *cache) invalidateAll() {
@@ -224,7 +190,10 @@ func (c *cache) invalidateAll() {
 }
 
 func newCache() cache {
-	return cache{
-		lookup: make(map[uint32]*cacheLine, cacheLineCount),
+	c := cache{}
+	for i := range c.lines {
+		c.lines[i].number = cacheInvalidEntry
+		c.lines[i].flags = 0
 	}
+	return c
 }

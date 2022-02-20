@@ -1,57 +1,53 @@
 package cpu
 
 const (
-	tlbSize = 16
+	tlbSize         = 256
+	tlbInvalidEntry = 0xFFFFFFFFFFFFFFFF
+	tlbTryDepth     = 2
 )
 
 type tlb struct {
-	lookup map[uint32]uint32
-	size   int
+	entries [tlbSize]uint64
 }
 
 func (t *tlb) load(vpn uint32) (bool, uint32) {
-	if pte, present := t.lookup[vpn]; present {
-		return true, pte
+	for i := uint32(0); i < tlbTryDepth; i++ {
+		v := t.entries[(vpn+i*i)&0xFF]
+		if uint32(v>>32) == vpn {
+			return true, uint32(v)
+		}
 	}
-
 	return false, 0
 }
 
 func (t *tlb) store(vpn, pte uint32) bool {
-	if _, present := t.lookup[vpn]; present {
-		return false
+	for i := uint32(0); i < tlbTryDepth; i++ {
+		v := t.entries[(vpn+i*i)&0xFF]
+		if v == tlbInvalidEntry {
+			t.entries[(vpn+i*i)&0xFF] = (uint64(vpn) << 32) | uint64(pte)
+			return true
+		}
 	}
-	t.lookup[vpn] = pte
-	return false
+
+	// if all are filled, invalidate all entries
+	for i := uint32(0); i < tlbTryDepth; i++ {
+		t.entries[(vpn+i*i)&0xFF] = tlbInvalidEntry
+	}
+
+	t.entries[vpn&0xFF] = (uint64(vpn) << 32) | uint64(pte)
+	return true
 }
 
-func (t *tlb) replaceRandom(vpn, pte uint32) bool {
-	if _, present := t.lookup[vpn]; present {
-		return false
+func (t *tlb) invalidateAll() {
+	for i := range t.entries {
+		t.entries[i] = tlbInvalidEntry
 	}
-
-	if t.size < tlbSize {
-		t.lookup[vpn] = pte
-		t.size += 1
-		return false
-	}
-
-	for k := range t.lookup {
-		delete(t.lookup, k)
-		t.lookup[vpn] = pte
-		return true
-	}
-
-	return false
-}
-
-func (t *tlb) flushAll() {
-	t.lookup = make(map[uint32]uint32)
-	t.size = 0
 }
 
 func newTLB() tlb {
-	return tlb{
-		lookup: make(map[uint32]uint32, tlbSize),
+	t := tlb{}
+	for i := range t.entries {
+		t.entries[i] = tlbInvalidEntry
 	}
+	return t
 }
