@@ -149,6 +149,7 @@ func (c *Core) fsqrt_d(inst uint32) {
 	if rs2 != 0 {
 		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	f1 := math.Float64frombits(c.freg[rs1])
@@ -324,6 +325,7 @@ func (c *Core) fclass_d(inst uint32) {
 	if rs2 != 0 {
 		c.csr[Csr_MTVAL] = inst
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	f1 := math.Float64frombits(c.freg[rs1])

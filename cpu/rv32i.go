@@ -207,6 +207,7 @@ func (c *Core) jal(inst uint32) {
 	if targetAddress&0x3 != 0 {
 		c.csr[Csr_MTVAL] = targetAddress
 		c.trap(TrapInstructionAddressMisaligned)
+		return
 	} else {
 		c.reg[rd] = c.pc + 4
 		c.pc = targetAddress
@@ -226,6 +227,7 @@ func (c *Core) jalr(inst uint32) {
 	if targetAddress&0x3 != 0 {
 		c.csr[Csr_MTVAL] = targetAddress
 		c.trap(TrapInstructionAddressMisaligned)
+		return
 	} else {
 		c.reg[rd] = c.pc + 4
 		c.pc = targetAddress
@@ -249,6 +251,7 @@ func (c *Core) beq(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -273,6 +276,7 @@ func (c *Core) bne(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -296,6 +300,7 @@ func (c *Core) blt(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -319,6 +324,7 @@ func (c *Core) bltu(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -342,6 +348,7 @@ func (c *Core) bge(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -365,6 +372,7 @@ func (c *Core) bgeu(inst uint32) {
 		if targetAddress&0x3 != 0 {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
+			return
 		} else {
 			c.pc = targetAddress
 			c.jumped = true
@@ -509,9 +517,11 @@ func (c *Core) fence(inst uint32) {
 // environment call
 func (c *Core) ecall(inst uint32) {
 	c.trap(TrapEcallUMode)
+	return
 }
 
 // environment break
 func (c *Core) ebreak(inst uint32) {
 	c.trap(TrapBreakpoint)
+	return
 }

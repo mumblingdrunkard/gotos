@@ -9,6 +9,7 @@ func (c *Core) lr_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapLoadAddressMisaligned)
 		return
 	}
@@ -47,6 +48,7 @@ func (c *Core) sc_w(inst uint32) {
 
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -93,6 +95,7 @@ func (c *Core) amoswap_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -139,6 +142,7 @@ func (c *Core) amoadd_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -184,6 +188,7 @@ func (c *Core) amoand_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -229,6 +234,7 @@ func (c *Core) amoor_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -274,6 +280,7 @@ func (c *Core) amoxor_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -327,6 +334,7 @@ func (c *Core) amomax_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -380,6 +388,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -433,6 +442,7 @@ func (c *Core) amomin_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
@@ -486,6 +496,7 @@ func (c *Core) amominu_w(inst uint32) {
 	addr := c.reg[rs1]
 	// check alignment
 	if addr&3 != 0 {
+		c.csr[Csr_MTVAL] = addr
 		c.trap(TrapStoreAddressMisaligned)
 		return
 	}
