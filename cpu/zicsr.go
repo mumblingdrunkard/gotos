@@ -126,6 +126,7 @@ func (c *Core) csrrw(inst uint32) {
 		c.reg[rd] = old
 	} else {
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 }
 
@@ -136,6 +137,7 @@ func (c *Core) csrrs(inst uint32) {
 
 	if csr&0xC00 != 0 { // check if user mode register
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	if rs1 != Reg_ZERO {
@@ -145,6 +147,7 @@ func (c *Core) csrrs(inst uint32) {
 			c.reg[rd] = old
 		} else {
 			c.trap(TrapIllegalInstruction)
+			return
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -158,6 +161,7 @@ func (c *Core) csrrc(inst uint32) {
 
 	if csr&0xC00 != 0 { // check if user mode register
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	if rs1 != Reg_ZERO {
@@ -167,6 +171,7 @@ func (c *Core) csrrc(inst uint32) {
 			c.reg[rd] = old
 		} else {
 			c.trap(TrapIllegalInstruction)
+			return
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -189,6 +194,7 @@ func (c *Core) csrrwi(inst uint32) {
 	} else {
 		// illegal instruction?
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 }
 
@@ -199,6 +205,7 @@ func (c *Core) csrrsi(inst uint32) {
 
 	if csr&0xC00 != 0 { // check if user mode register
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	if imm4_0 != 0 {
@@ -208,6 +215,7 @@ func (c *Core) csrrsi(inst uint32) {
 			c.reg[rd] = old
 		} else {
 			c.trap(TrapIllegalInstruction)
+			return
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
@@ -221,6 +229,7 @@ func (c *Core) csrrci(inst uint32) {
 
 	if csr&0xC00 != 0 { // check if user mode register
 		c.trap(TrapIllegalInstruction)
+		return
 	}
 
 	if imm4_0 != 0 {
@@ -230,6 +239,7 @@ func (c *Core) csrrci(inst uint32) {
 			c.reg[rd] = old
 		} else {
 			c.trap(TrapIllegalInstruction)
+			return
 		}
 	} else { // don't write csr, just read
 		c.reg[rd] = c.csr[csr]
