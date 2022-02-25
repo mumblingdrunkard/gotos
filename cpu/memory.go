@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// 4 MiB of memory ought to be enough
+	// 1 MiB of memory ought to be enough
 	MemorySize = 1024 * 1024 * 1
 )
 

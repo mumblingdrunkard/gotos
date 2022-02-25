@@ -1,15 +1,3 @@
-// RISC-V privileged specification says:
-//
-// ---
-//
-// If **mtval** is written with a nonzero value when a breakpoint, address misaligned, access-fault, or page-fault exception occurs on an instruction fetch, load, or store, then **mtval** will contain the faulting virtual address.
-//
-// If **mtval** is written with a nonzero value when a misaligned load or store causes an access-fault or page-fault exception occurs, then **mtval** will contain the virtual address o the portion of the access that caused the fault.
-//
-// ---
-//
-// So **mtval** should contain the virtual address that caused the fault.
-
 package cpu
 
 import (
@@ -20,7 +8,7 @@ type memoryController struct {
 	iCache cache // instruction cache
 	dCache cache // data cache
 	tCache cache // translation cache
-	tlb0   tlb   // level 0 tlb - normal pages
+	tlb    tlb   // level 0 tlb - normal pages
 
 	// metrics
 	cacheMisses uint64
@@ -32,7 +20,7 @@ func newMemoryController() memoryController {
 		dCache: newCache(),
 		iCache: newCache(),
 		tCache: newCache(),
-		tlb0:   newTLB(),
+		tlb:    newTLB(),
 	}
 }
 
@@ -240,6 +228,19 @@ func (c *Core) loadWordPhysical(pAddr uint32) (bool, uint32) {
 	}
 }
 
+// load a word without translating the address first. Used for the page table walker
+func (c *Core) unsafeLoadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
+	c.mc.accesses++
+	return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+}
+
+func (c *Core) loadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
+	c.mc.accesses++
+	c.system.Memory().Lock()
+	defer c.system.Memory().Unlock()
+	return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+}
+
 // Writes the data cache to memory
 func (c *Core) DataCacheWriteback() {
 	c.system.Memory().Lock()
@@ -258,15 +259,11 @@ func (c *Core) InstructionCacheInvalidate() {
 }
 
 func (c *Core) TLBInvalidate() {
-	c.mc.tlb0.invalidateAll()
+	c.mc.tlb.invalidateAll()
 }
 
 func (c *Core) TranslationCacheInvalidate() {
 	c.mc.tCache.invalidateAll()
-}
-
-func (c *Core) SignalVirtualMemoryUpdates() {
-	c.vmaUpd.Store(true)
 }
 
 // reads n bytes from the (possibly virtual) address addr and out

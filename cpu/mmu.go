@@ -1,7 +1,5 @@
 package cpu
 
-import "fmt"
-
 // TODO Should mmu be moved into its own package perhaps?
 
 const (
@@ -14,28 +12,6 @@ const (
 	pageFlagAccessed        = 0x40 // whether this page has been accessed since the access bit was last cleared
 	pageFlagDirty           = 0x80 // whether this page has been written to since the dirty bit was last cleared
 )
-
-// =============================================================================
-// >           31  20   19  10   9 8   7   6   5   4   3   2   1   0
-// >         | PPN[1] | PPN[0] | RSW | D | A | G | U | X | W | R | V |
-// >             12       10      2    1   1   1   1   1   1   1   1
-// >
-// >                    Figure 4.18: Sv32 page table entry
-
-// Two schemes to manage the A and D bits are permitted:
-// - When a virtual page is accessed and the A bit is clear, or is written and
-//   the D bit is clear, a page-fault exception is raised.
-// - ...
-//
-// ...
-//
-//     ---
-//         The A and D bits are never cleared by the implementation.
-//     If the supervisor software does not rely on accessed and/or dirty bits,
-//     e.g. if it does not swap memory pages to secondary storage or if the
-//     pages are being used to map I/O space, it should always set them to 1 in
-//     the PTE to improve performance.
-//     ---
 
 type accessType int
 
@@ -59,19 +35,20 @@ func (c *Core) translate(vAddr uint32, aType accessType) (success bool, pAddr ui
 		return true, vAddr
 	}
 
-	vpn0 := vAddr >> 12
+	// virtual page identifier
+	vpi := vAddr >> 12
+	vpi |= satp & 0x7FC00000
 
 	pte := uint32(0)
 	i := 0
 
-	if present, p := c.mc.tlb0.load(vpn0); present {
+	if present, p := c.mc.tlb.load(vpi); present {
 		// normal page
 		pte = p
 		i = 0
 	} else {
-		fmt.Println("Missed")
 		// not in tlb, walk table
-		j, p := c.walkTable(vpn0)
+		j, p := c.walkTable(vpi)
 		i = j
 
 		if j < 0 {
@@ -121,11 +98,11 @@ func (c *Core) translate(vAddr uint32, aType accessType) (success bool, pAddr ui
 
 		// store the pte in table as well
 		if j == 0 {
-			c.mc.tlb0.store(vpn0, pte)
+			c.mc.tlb.store(vpi, pte)
 		} else if j == 1 {
 			// treat superpage entries as several entries of normal pages instead
 			pte |= (vAddr & 0x003FF000) >> 2 // edit the PTE
-			c.mc.tlb0.store(vpn0, pte)
+			c.mc.tlb.store(vpi, pte)
 		}
 
 		pAddr = ((pte & 0xFFFFFC00) << 2) | (vAddr & 0x00000FFF)
@@ -143,8 +120,6 @@ func (c *Core) translate(vAddr uint32, aType accessType) (success bool, pAddr ui
 
 // Walks the table that satp is currently pointing to
 func (c *Core) walkTable(vpn uint32) (int, uint32) {
-	// fmt.Println("walking table!")
-	// fmt.Printf("%08x\n", vpn)
 	satp := c.csr[Csr_SATP]
 
 	// 1. Let a be satp.ppn × PAGESIZE, and let i = LEVELS − 1. (For Sv32,
@@ -153,13 +128,12 @@ func (c *Core) walkTable(vpn uint32) (int, uint32) {
 	a := (satp & 0x003FFFFF) * pagesize
 	i := 1
 	for {
-		// fmt.Println(a)
 		// 2. Let pte be the value of the PTE at address a+va.vpn[i]×PTESIZE.
 		// (For Sv32, PTESIZE=4.) If accessing pte violates a PMA or PMP check,
 		// raise an access-fault exception corresponding to the original access
 		// type.
 		vpni := (vpn >> (10 * i)) & 0x3FF
-		success, pte := c.loadWordPhysical(a + vpni*4)
+		success, pte := c.loadWordPhysicalUncached(a + vpni*4)
 		if !success {
 			panic("Invalid")
 		}
@@ -172,8 +146,6 @@ func (c *Core) walkTable(vpn uint32) (int, uint32) {
 			return i, 0
 		}
 
-		// fmt.Println("Page valid")
-
 		// 4. Otherwise, the PTE is valid. If pte.r = 1 or pte.x = 1, go to
 		// step 5.  Otherwise, this PTE is a pointer to the next level of the
 		// page table. Let i = i − 1. If i < 0, stop and raise a page-fault
@@ -185,7 +157,6 @@ func (c *Core) walkTable(vpn uint32) (int, uint32) {
 				return i, 0
 			}
 			a = (pte >> 10) * pagesize
-			// fmt.Println("Next level")
 			continue
 		}
 
@@ -196,7 +167,6 @@ func (c *Core) walkTable(vpn uint32) (int, uint32) {
 			return i, 0
 		}
 
-		// fmt.Printf("%08x\n", pte)
 		return i, pte
 		// do checking in translate
 	}

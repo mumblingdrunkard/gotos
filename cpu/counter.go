@@ -1,5 +1,10 @@
 package cpu
 
+type counter struct {
+	enable bool
+	value  uint64
+}
+
 func (c *Core) EnableCounter() {
 	c.counter.enable = true
 }
