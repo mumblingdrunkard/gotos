@@ -5,24 +5,6 @@ import (
 	"gotos/cpu"
 )
 
-// These traps should be handled
-//
-// TrapInstructionAddressMisaligned
-// TrapInstructionAccessFault
-// TrapIllegalInstruction
-// TrapBreakpoint
-// TrapLoadAddressMisaligned
-// TrapLoadAccessFault
-// TrapStoreAddressMisaligned
-// TrapStoreAccessFault
-// TrapEcallUMode
-// TrapInstructionPageFault
-// TrapLoadPageFault
-// TrapStorePageFault
-//
-// TrapMachineTimerInterrupt
-// TrapMachineExternalInterrupt
-
 func (s *System) HandleTrap(c *cpu.Core) {
 	// get trap reason
 	reason := c.GetCSR(cpu.Csr_MCAUSE)

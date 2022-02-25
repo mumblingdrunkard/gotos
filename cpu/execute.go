@@ -1,20 +1,6 @@
 // This file contains logic for decoding 32 bit RISC-V instructions.
 // Decoding is implemented for the I, M, A, F, D, Zicsr, and Zifencei extensions.
 
-// RISC-V privileged specification says:
-//
-// ---
-//
-// If **mtval** is written with a nonzero value when an illegal-instruction exception occurs, then **mtval** will contain the shortest of:
-//
-// 1. the actual faulting instruction
-// 2. the first ILEN bits of the faulting instruction
-// 3. the first MXLEN bits of the faulting instruction.
-//
-// ---
-//
-// I have opted for the first alternative.
-
 package cpu
 
 func (c *Core) execute(inst uint32) {
@@ -45,11 +31,10 @@ func (c *Core) execute(inst uint32) {
 
 	// From the RISC-V privileged spec:
 	//
-	// ---
-	//
-	// For other traps, **mtval** is set to zero, but a future standard may redefine **mtval**'s setting for other traps.
-	//
-	// ---
+	// > ---
+	// > For other traps, **mtval** is set to zero, but a future standard may
+	// > redefine **mtval**'s setting for other traps.
+	// > ---
 	//
 	// This ensures that mtval is always 0 before entering an instruction.
 	// Before a trap is raised, mtval may be set.
