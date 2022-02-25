@@ -52,11 +52,15 @@ const (
 // A RISC-V core that runs in user mode
 type Core struct {
 	sync.WaitGroup
+	bcm sync.Mutex
 	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
-	bcm    sync.Mutex
-	state  atomic.Value // can be HALTED, HALTING, or RUNNING
-	jumped bool
-	mc     memoryController
+	state            atomic.Value // can be HALTED, HALTING, or RUNNING
+	vmaUpd           atomic.Value
+	jumped           bool
+	iAmLockingMemory bool
+	counter          counter
+	system           System
+	mc               memoryController
 	// normal registers (save on context switch)
 	reg  [32]uint32 // normal registers
 	freg [32]uint64 // fp registers
@@ -64,11 +68,13 @@ type Core struct {
 	// CSRs
 	csr [4096]uint32 // control and status registers
 	// function pointers
-	system System
 	// counters, used for predictable scheduling
-	counter counter
 	// timers?
 	// miscellaneous
+}
+
+func (c *Core) fetch() (bool, uint32) {
+	return c.loadInstruction(c.pc)
 }
 
 func (c *Core) UnsafeBoot() {
@@ -99,7 +105,6 @@ func (c *Core) run(wg *sync.WaitGroup) {
 	}
 
 	c.bcm.Unlock()
-
 	c.Done() // core is done
 }
 
@@ -126,15 +131,6 @@ func (c *Core) HaltIfRunning() bool {
 }
 
 func (c *Core) UnsafeStep() {
-	c.jumped = false
-	// always increment cycle counter
-	// theoretically never overflows
-	cycle := uint64(c.csr[Csr_CYCLE]) | (uint64(c.csr[Csr_CYCLEH]) << 32)
-	cycle += 1
-	c.csr[Csr_CYCLE] = uint32(cycle)
-	c.csr[Csr_CYCLEH] = uint32(cycle >> 32)
-
-	// Interrupts
 	if c.counter.enable {
 		if c.counter.value == 0 {
 			c.counter.enable = false
@@ -143,29 +139,24 @@ func (c *Core) UnsafeStep() {
 		}
 		c.counter.value -= 1
 	}
+	c.jumped = false
 
-	success, inst := c.loadInstruction(c.pc)
+	if c.vmaUpd.Load() == true {
+		c.vmaUpd.Store(false)
+		c.TranslationCacheInvalidate()
+		c.TLBInvalidate()
+	}
+
+	success, inst := c.fetch()
 	if success {
 		c.execute(inst)
-		// TODO: execute may fail, don't increment retired
-		retired := uint64(c.csr[Csr_INSTRET]) | (uint64(c.csr[Csr_INSTRETH]) << 32)
-		retired += 1
-		c.csr[Csr_INSTRET] = uint32(retired)
-		c.csr[Csr_INSTRETH] = uint32(retired >> 32)
 	} else {
 		return // retry the fetch in the next cycle/step
 	}
 
-	// Only increment pc if the processor did not trap or perform a jump
-	// This means that branches and jumps don't need to jump to the address *before* the intended target.
-	// This also means that for most traps/exceptions, the instruction will be retried.
-	// This is helpful for stuff like page-faults that may occur.
-	// It also means that when something like ECALL or EBREAK is performed, there may be a need to manually increment the program counter.
 	if !c.jumped {
 		c.pc += 4
 	}
-
-	c.jumped = false
 }
 
 func NewCore(id uint32) (c Core) {
@@ -174,7 +165,6 @@ func NewCore(id uint32) (c Core) {
 	}
 
 	c.csr[Csr_MHARTID] = id
-	c.reg[2] = MemorySize
 
 	c.state.Store(coreStateHalted)
 
@@ -196,10 +186,12 @@ func (c *Core) DumpRegisters() {
 
 	fmt.Println("Integer registers")
 	for i, r := range c.reg {
-		fmt.Printf("[%02d]: %08X = %d\n", i, r, r)
+		if r == 0 {
+			fmt.Printf("[%02d]: \n", i)
+		} else {
+			fmt.Printf("[%02d]: %08X\n", i, r)
+		}
 	}
-
-	fmt.Println("Counter: ", c.counter.value)
 }
 
 // --- Getters and setters ---

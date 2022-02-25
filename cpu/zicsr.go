@@ -88,7 +88,7 @@ const (
 	// Csr_MEDELEG    = 0x302
 	// Csr_MIDELEG    = 0x303
 	// Csr_MIE        = 0x304
-	// Csr_MTVEC      = 0x305
+	// Csr_MTVEC      = 0x305 // will never be used
 	// Csr_MCOUNTEREN = 0x306
 	// Csr_MSTATUSH   = 0x310
 
