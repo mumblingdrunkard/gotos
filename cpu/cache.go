@@ -56,6 +56,8 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 			}
 
 			switch width {
+			case 1:
+				return true, uint64(c.lines[try].data[offset])
 			case 2:
 				return true, uint64(binary.LittleEndian.Uint16(c.lines[try].data[offset : offset+2]))
 			case 4:
