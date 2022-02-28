@@ -185,9 +185,11 @@ func (c *Core) DumpRegisters() {
 	fmt.Printf("pc: %X\n", c.pc)
 
 	fmt.Println("Integer registers")
+	// prints all registers that have non-zero values.
+	// this makes output cleaner
 	for i, r := range c.reg {
 		if r == 0 {
-			fmt.Printf("[%02d]: \n", i)
+			// fmt.Printf("[%02d]: \n", i)
 		} else {
 			fmt.Printf("[%02d]: %08X\n", i, r)
 		}
