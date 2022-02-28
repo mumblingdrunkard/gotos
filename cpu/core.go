@@ -54,13 +54,12 @@ type Core struct {
 	sync.WaitGroup
 	bcm sync.Mutex
 	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
-	state            atomic.Value // can be HALTED, HALTING, or RUNNING
-	vmaUpd           atomic.Value
-	jumped           bool
-	iAmLockingMemory bool
-	counter          counter
-	system           System
-	mc               memoryController
+	state   atomic.Value // can be HALTED, HALTING, or RUNNING
+	vmaUpd  atomic.Value
+	jumped  bool
+	counter counter
+	system  System
+	mc      memoryController
 	// normal registers (save on context switch)
 	reg  [32]uint32 // normal registers
 	freg [32]uint64 // fp registers
@@ -79,6 +78,7 @@ func (c *Core) fetch() (bool, uint32) {
 
 func (c *Core) UnsafeBoot() {
 	c.system.HandleBoot(c)
+	c.pc = c.csr[Csr_MEPC]
 }
 
 func (c *Core) run(wg *sync.WaitGroup) {
@@ -89,7 +89,7 @@ func (c *Core) run(wg *sync.WaitGroup) {
 		panic("Attempted to call `run(...)` on a core that was not in the HALTED state")
 	}
 
-	c.system.HandleBoot(c)
+	c.UnsafeBoot()
 
 	wg.Done() // core has switched to running state
 
@@ -185,12 +185,8 @@ func (c *Core) DumpRegisters() {
 	fmt.Printf("pc: %X\n", c.pc)
 
 	fmt.Println("Integer registers")
-	// prints all registers that have non-zero values.
-	// this makes output cleaner
 	for i, r := range c.reg {
-		if r == 0 {
-			// fmt.Printf("[%02d]: \n", i)
-		} else {
+		if r != 0 {
 			fmt.Printf("[%02d]: %08X\n", i, r)
 		}
 	}
@@ -204,10 +200,6 @@ func (c *Core) GetCSR(number int) uint32 {
 
 func (c *Core) SetCSR(number int, val uint32) {
 	c.csr[number] = val
-}
-
-func (c *Core) SetPC(pc uint32) {
-	c.pc = pc
 }
 
 func (c *Core) GetIRegister(number int) uint32 {

@@ -49,4 +49,5 @@ func (c *Core) trap(reason uint32) {
 	c.csr[Csr_MEPC] = c.pc
 	c.jumped = true
 	c.system.HandleTrap(c)
+	c.pc = c.csr[Csr_MEPC]
 }

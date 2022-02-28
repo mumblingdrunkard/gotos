@@ -79,7 +79,7 @@ func (s *System) handleStoreAccessFault(c *cpu.Core) {
 
 func (s *System) handleBreakpoint(c *cpu.Core) {
 	fmt.Printf("[core %d]: Breakpoint.\n", c.GetCSR(cpu.Csr_MHARTID))
-	c.SetPC(c.GetCSR(cpu.Csr_MEPC) + 4) // return to the instruction after the breakpoint
+	c.SetCSR(cpu.Csr_MEPC, c.GetCSR(cpu.Csr_MEPC)+4) // return to the instruction after the breakpoint
 }
 
 func (s *System) handleEcallUMode(c *cpu.Core) {
