@@ -15,5 +15,8 @@ func (s *System) syscall(c *cpu.Core) {
 			c.GetIRegister(cpu.Reg_A1),
 		)
 		c.HaltIfRunning() // stop the processor
+	default:
+		fmt.Printf("ERROR: Invalid/unimplemented syscall number %d\n", number)
+		c.HaltIfRunning() // stop the processor
 	}
 }
