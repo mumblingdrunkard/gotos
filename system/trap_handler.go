@@ -83,8 +83,7 @@ func (s *System) handleBreakpoint(c *cpu.Core) {
 }
 
 func (s *System) handleEcallUMode(c *cpu.Core) {
-	fmt.Printf("[core %d]: ECALL from User Mode\n", c.GetCSR(cpu.Csr_MHARTID))
-	c.HaltIfRunning()
+	s.syscall(c)
 }
 
 func (s *System) handleInstructionPageFault(c *cpu.Core) {
