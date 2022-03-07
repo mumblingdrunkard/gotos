@@ -2,31 +2,43 @@ package cpu
 
 import "sync"
 
-type ReservationSets struct {
-	sync.Mutex
-	sets   []map[uint32]bool
-	lookup []*map[uint32]bool
+type reservation struct {
+	valid bool
+	value uint32
 }
 
-func (rs *ReservationSets) unsafeInvalidateAll(addr uint32) {
-	for i := range rs.sets {
-		delete(*rs.lookup[i], addr)
+type ReservationSets struct {
+	sync.Mutex
+	reservations []reservation
+}
+
+// Invalidate the reservation accross all cores
+func (rs *ReservationSets) unsafeCompareAndInvalidateAllReservations(addr uint32) {
+	for i := range rs.reservations {
+		if rs.reservations[i].value == addr && rs.reservations[i].valid {
+			rs.reservations[i].valid = false
+		}
 	}
 }
 
-func (rs *ReservationSets) unsafeInvalidate(set int, addr uint32) {
-	delete(*rs.lookup[set], addr)
+// Register a reservation in a given set
+func (rs *ReservationSets) unsafeRegisterReservation(set int, addr uint32) {
+	rs.reservations[set].value = addr
+	rs.reservations[set].valid = true
+}
+
+// Check and invalidate a reservation
+func (rs *ReservationSets) unsafeCompareAndInvalidateReservation(set int, addr uint32) bool {
+	if rs.reservations[set].value == addr && rs.reservations[set].valid {
+		rs.reservations[set].valid = false
+		return true
+	}
+	return false
 }
 
 func NewReservationSets(n int) (rs ReservationSets) {
 	rs = ReservationSets{
-		sets:   make([]map[uint32]bool, n),
-		lookup: make([]*map[uint32]bool, n),
-	}
-
-	for i := 0; i < n; i++ {
-		rs.sets[i] = make(map[uint32]bool)
-		rs.lookup[i] = &rs.sets[i]
+		reservations: make([]reservation, n),
 	}
 
 	return

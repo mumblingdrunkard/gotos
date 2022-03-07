@@ -32,8 +32,8 @@ func (c *Core) lr_w(inst uint32) {
 		c.reg[rd] = w
 	}
 	if success {
-		m := c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]]
-		(*m)[pLine] = true
+		hid := int(c.csr[Csr_MHARTID])
+		c.system.ReservationSets().unsafeRegisterReservation(hid, pLine)
 	}
 	c.system.ReservationSets().Unlock()
 }
@@ -63,7 +63,8 @@ func (c *Core) sc_w(inst uint32) {
 
 	c.system.ReservationSets().Lock()
 	// check rset
-	if _, ok := (*c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]])[pLine]; ok {
+	hid := int(c.csr[Csr_MHARTID])
+	if c.system.ReservationSets().unsafeCompareAndInvalidateReservation(hid, pLine) {
 		var bytes [4]uint8
 		binary.LittleEndian.PutUint32(bytes[:], c.reg[rs2])
 
@@ -75,7 +76,7 @@ func (c *Core) sc_w(inst uint32) {
 		if success {
 			c.reg[rd] = 0
 			// invalidate entries on all harts
-			c.system.ReservationSets().unsafeInvalidateAll(pLine)
+			c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 		}
 	} else {
 		// failed
@@ -83,7 +84,7 @@ func (c *Core) sc_w(inst uint32) {
 	}
 
 	// Regardless of success or failure, executing an SC.W instruction invalidates any reservation held by this hart.
-	delete(*c.system.ReservationSets().lookup[c.csr[Csr_MHARTID]], pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateReservation(hid, pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -130,7 +131,7 @@ func (c *Core) amoswap_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -176,7 +177,7 @@ func (c *Core) amoadd_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LR in all cores
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -222,7 +223,7 @@ func (c *Core) amoand_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -268,7 +269,7 @@ func (c *Core) amoor_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -314,7 +315,7 @@ func (c *Core) amoxor_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -368,7 +369,7 @@ func (c *Core) amomax_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -422,7 +423,7 @@ func (c *Core) amomaxu_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -476,7 +477,7 @@ func (c *Core) amomin_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
 
@@ -530,6 +531,6 @@ func (c *Core) amominu_w(inst uint32) {
 	c.system.Memory().Unlock()
 
 	// Invalidate LRs
-	c.system.ReservationSets().unsafeInvalidateAll(pLine)
+	c.system.ReservationSets().unsafeCompareAndInvalidateAllReservations(pLine)
 	c.system.ReservationSets().Unlock()
 }
