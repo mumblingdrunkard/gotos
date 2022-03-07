@@ -55,7 +55,6 @@ type Core struct {
 	bcm sync.Mutex
 	// The big core mutex (bcm) ensures that only one goroutine is inside the fetch-decode-execute loop at any one time
 	state   atomic.Value // can be HALTED, HALTING, or RUNNING
-	vmaUpd  atomic.Value
 	jumped  bool
 	counter counter
 	system  System
@@ -141,12 +140,6 @@ func (c *Core) UnsafeStep() {
 	}
 	c.jumped = false
 
-	if c.vmaUpd.Load() == true {
-		c.vmaUpd.Store(false)
-		c.TranslationCacheInvalidate()
-		c.TLBInvalidate()
-	}
-
 	success, inst := c.fetch()
 	if success {
 		c.execute(inst)
@@ -190,6 +183,18 @@ func (c *Core) DumpRegisters() {
 			fmt.Printf("[%02d]: %08X\n", i, r)
 		}
 	}
+
+	cycle := uint64(c.csr[Csr_CYCLE]) | (uint64(c.csr[Csr_CYCLEH]) << 32)
+	fmt.Println("CYCLEH: ", cycle)
+
+	// Dump all floating point registers
+	// Prints the HEX value as well as the f32 and f64 interpretation of that value
+	// fmt.Println("Floating-point registers")
+	// for i, r := range c.freg {
+	// 	f := math.Float32frombits(uint32(r))
+	// 	d := math.Float64frombits(r)
+	// 	fmt.Printf("[%02d]: %016X\t%f\t%f\n", i, r, f, d)
+	// }
 }
 
 // --- Getters and setters ---
