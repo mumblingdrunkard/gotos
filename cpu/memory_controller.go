@@ -7,7 +7,6 @@ import (
 type memoryController struct {
 	iCache cache // instruction cache
 	dCache cache // data cache
-	tCache cache // translation cache
 	tlb    tlb   // level 0 tlb - normal pages
 
 	// metrics
@@ -19,7 +18,6 @@ func newMemoryController() memoryController {
 	return memoryController{
 		dCache: newCache(),
 		iCache: newCache(),
-		tCache: newCache(),
 		tlb:    newTLB(),
 	}
 }
@@ -207,28 +205,6 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 }
 
 // load a word without translating the address first. Used for the page table walker
-func (c *Core) loadWordPhysical(pAddr uint32) (bool, uint32) {
-	c.mc.accesses++
-	if !cacheEnable {
-		c.system.Memory().Lock()
-		defer c.system.Memory().Unlock()
-		return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
-	}
-
-	if hit, v := c.mc.tCache.load(pAddr, 4); !hit {
-		c.mc.cacheMisses++
-		lineNumber := pAddr >> cacheLineOffsetBits
-		c.system.Memory().Lock()
-		c.mc.tCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
-		c.system.Memory().Unlock()
-		_, v := c.mc.tCache.load(pAddr, 4)
-		return true, uint32(v)
-	} else {
-		return true, uint32(v)
-	}
-}
-
-// load a word without translating the address first. Used for the page table walker
 func (c *Core) unsafeLoadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
 	c.mc.accesses++
 	return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
@@ -260,10 +236,6 @@ func (c *Core) InstructionCacheInvalidate() {
 
 func (c *Core) TLBInvalidate() {
 	c.mc.tlb.invalidateAll()
-}
-
-func (c *Core) TranslationCacheInvalidate() {
-	c.mc.tCache.invalidateAll()
 }
 
 // reads n bytes from the (possibly virtual) address addr and out
