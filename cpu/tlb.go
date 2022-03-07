@@ -2,9 +2,12 @@ package cpu
 
 const (
 	tlbSize = 256
+
 	// valid vpis will never have the leftmost bit set
+	// 9-bit asid, 22-bit vpn, 32-bit pte = 63 bits
 	tlbInvalidEntry = 0xFFFFFFFFFFFFFFFF
-	tlbTryDepth     = 2
+
+	tlbProbeDepth = 3
 )
 
 type tlb struct {
@@ -12,7 +15,7 @@ type tlb struct {
 }
 
 func (t *tlb) load(vpi uint32) (bool, uint32) {
-	for i := uint32(0); i < tlbTryDepth; i++ {
+	for i := uint32(0); i < tlbProbeDepth; i++ {
 		v := t.entries[(vpi+i*i)&0xFF]
 		if uint32(v>>32) == vpi {
 			return true, uint32(v)
@@ -22,7 +25,7 @@ func (t *tlb) load(vpi uint32) (bool, uint32) {
 }
 
 func (t *tlb) store(vpi, pte uint32) bool {
-	for i := uint32(0); i < tlbTryDepth; i++ {
+	for i := uint32(0); i < tlbProbeDepth; i++ {
 		v := t.entries[(vpi+i*i)&0xFF]
 		if v == tlbInvalidEntry {
 			t.entries[(vpi+i*i)&0xFF] = (uint64(vpi) << 32) | uint64(pte)
@@ -31,7 +34,7 @@ func (t *tlb) store(vpi, pte uint32) bool {
 	}
 
 	// if all are filled, invalidate all entries
-	for i := uint32(0); i < tlbTryDepth; i++ {
+	for i := uint32(0); i < tlbProbeDepth; i++ {
 		t.entries[(vpi+i*i)&0xFF] = tlbInvalidEntry
 	}
 
