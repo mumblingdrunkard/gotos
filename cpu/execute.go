@@ -3,6 +3,9 @@
 
 package cpu
 
+// execute takes an instruction encoded as an unsigned 32-bit integer,
+// decodes it, and executes it.
+//   This function returns nothing, but potentially has several side-effects.
 func (c *Core) execute(inst uint32) {
 	const (
 		OP_IMM   uint32 = 0b0010011
@@ -26,18 +29,10 @@ func (c *Core) execute(inst uint32) {
 		FNMADD          = 0b1001111
 	)
 
-	// Register 0 is hardwired with all 0s have to reset to 0 for every cycle because some instructions may use this as their /dev/null
+	// Register 0 is hardwired with all 0s,
+	// have to reset to 0 for every cycle because some instructions
+	// may use this as their /dev/null
 	c.reg[Reg_ZERO] = 0
-
-	// From the RISC-V privileged spec:
-	//
-	// > ---
-	// > For other traps, **mtval** is set to zero, but a future standard may
-	// > redefine **mtval**'s setting for other traps.
-	// > ---
-	//
-	// This ensures that mtval is always 0 before entering an instruction.
-	// Before a trap is raised, mtval may be set.
 	c.csr[Csr_MTVAL] = 0
 
 	opcode := inst & 0x7f

@@ -1,10 +1,17 @@
+// This file contains the system boot handler that is required by the
+// cpu.System interface.
+
 package system
 
 import "gotos/cpu"
 
-// This file should contain system startup function
-// This function should set up all registers and whatnot to prepare the core to start running programs.
-
+// HandleBoot handles the boot-up process of a core.
 func (s *System) HandleBoot(c *cpu.Core) {
-	c.SetIRegister(cpu.Reg_SP, cpu.MemorySize)
+	next := s.Scheduler.Pop()
+	if next != nil {
+		s.swtch(c, nil, next)
+		c.SetCounter(timeSlice)
+	} else {
+		c.Halt()
+	}
 }

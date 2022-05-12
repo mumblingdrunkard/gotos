@@ -6,17 +6,23 @@ import (
 )
 
 const (
-	// 1 MiB of memory ought to be enough
-	MemorySize = 1024 * 1024 * 1
+	// 4 MiB of memory ought to be enough
+	MemorySize = 1024 * 1024 * 4
 )
 
+// Memory is a structure that contains a mutex and a large array of bytes.
 type Memory struct {
 	sync.Mutex
 	data [MemorySize]uint8
 }
 
-// Write len(data) number of bytes into m.data from offset and out
-func (m *Memory) Write(address uint32, data []uint8) (error, int) {
+// WriteRaw will write len(data) number of bytes into m.data from offset
+// and out.
+//   No address translation happens.
+//   Trying to write out of range will return an error and no data will
+// be written.
+//   Maybe this should panic?
+func (m *Memory) WriteRaw(address uint32, data []uint8) (error, int) {
 	m.Lock()
 	defer m.Unlock()
 	if address > uint32(len(m.data)-len(data)) {
@@ -28,8 +34,12 @@ func (m *Memory) Write(address uint32, data []uint8) (error, int) {
 	return nil, len(data)
 }
 
-// Read n number of bytes from address and out
-func (m *Memory) Read(address, n uint32) (error, []uint8) {
+// ReadRaw n number of bytes from address and out
+//   No address translation happens.
+//   Trying to read out of range will return an error and no data will
+// be read.
+//   Maybe this should panic?
+func (m *Memory) ReadRaw(address, n uint32) (error, []uint8) {
 	m.Lock()
 	defer m.Unlock()
 	if address > uint32(len(m.data))-n {
@@ -42,10 +52,7 @@ func (m *Memory) Read(address, n uint32) (error, []uint8) {
 	return nil, bytes
 }
 
-func (m *Memory) Size() uint32 {
-	return MemorySize
-}
-
+// NewMemory creates a new instance of `Memory`
 func NewMemory() Memory {
 	return Memory{}
 }

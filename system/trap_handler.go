@@ -5,6 +5,27 @@ import (
 	"gotos/cpu"
 )
 
+// These traps should be handled
+//
+// TrapInstructionAddressMisaligned
+// TrapInstructionAccessFault
+// TrapIllegalInstruction
+// TrapBreakpoint
+// TrapLoadAddressMisaligned
+// TrapLoadAccessFault
+// TrapStoreAddressMisaligned
+// TrapStoreAccessFault
+// TrapEcallUMode
+// TrapInstructionPageFault
+// TrapLoadPageFault
+// TrapStorePageFault
+//
+// TrapMachineTimerInterrupt
+// TrapMachineExternalInterrupt
+
+// HandleTrap is required to satisfy the `cpu.System` interface.
+//   It takes a pointer to a `cpu.Core` as an argument and should use
+//   internal information from the core to appropriately handle the trap.
 func (s *System) HandleTrap(c *cpu.Core) {
 	// get trap reason
 	reason := c.GetCSR(cpu.Csr_MCAUSE)
@@ -35,6 +56,8 @@ func (s *System) HandleTrap(c *cpu.Core) {
 		s.handleStorePageFault(c)
 	case cpu.TrapMachineTimerInterrupt:
 		s.handleMachineTimerInterrupt(c)
+	case cpu.TrapMachineExternalInterrupt:
+		s.handleMachineExternalInterrupt(c)
 	}
 }
 
@@ -44,37 +67,37 @@ func (s *System) HandleTrap(c *cpu.Core) {
 
 func (s *System) handleInstructionAddressMisaligned(c *cpu.Core) {
 	fmt.Printf("[core %d]: Instruction Address Misaligned. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleInstructionAccessFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Instruction Access Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleIllegalInstruction(c *cpu.Core) {
 	fmt.Printf("[core %d]: Illegal Instruction. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleLoadAddressMisaligned(c *cpu.Core) {
 	fmt.Printf("[core %d]: Load Address Misaligned. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleLoadAccessFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Load Access Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleStoreAddressMisaligned(c *cpu.Core) {
 	fmt.Printf("[core %d]: Store Address Misaligned. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleStoreAccessFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Store Access Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleBreakpoint(c *cpu.Core) {
@@ -82,27 +105,46 @@ func (s *System) handleBreakpoint(c *cpu.Core) {
 	c.SetCSR(cpu.Csr_MEPC, c.GetCSR(cpu.Csr_MEPC)+4) // return to the instruction after the breakpoint
 }
 
+func (s *System) handleMachineTimerInterrupt(c *cpu.Core) {
+	// switch to the next process if available
+	old := &PCB{}
+	next := s.Scheduler.Pop()
+
+	if next != nil {
+		s.swtch(c, old, next)
+		s.Scheduler.Push(old)
+	}
+
+	c.SetCounter(timeSlice)
+}
+
+func (s *System) handleMachineExternalInterrupt(c *cpu.Core) {
+	by, code := c.InterruptInfo()
+	fmt.Printf("[core %d]: Machine External Interrupt - code %d, by %d\n", c.GetCSR(cpu.Csr_MHARTID), code, by)
+	if code == 1 {
+		c.Stop()
+		return
+	}
+	c.Halt()
+}
+
 func (s *System) handleEcallUMode(c *cpu.Core) {
-	fmt.Printf("[core %d]: ECALL from User Mode\n", c.GetCSR(cpu.Csr_MHARTID))
-	c.HaltIfRunning()
+	// syscall number is placed in register a0
+	number := c.GetIRegister(cpu.Reg_A0)
+	s.syscall(c, number)
 }
 
 func (s *System) handleInstructionPageFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Instruction Page Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleLoadPageFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Load Page Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
+	c.Halt()
 }
 
 func (s *System) handleStorePageFault(c *cpu.Core) {
 	fmt.Printf("[core %d]: Store Page Fault. **mtval** : %08X\n", c.GetCSR(cpu.Csr_MHARTID), c.GetCSR(cpu.Csr_MTVAL))
-	c.HaltIfRunning()
-}
-
-func (s *System) handleMachineTimerInterrupt(c *cpu.Core) {
-	fmt.Printf("[core %d]: Machine Timer Interrupt\n", c.GetCSR(cpu.Csr_MHARTID))
-	c.HaltIfRunning()
+	c.Halt()
 }

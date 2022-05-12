@@ -1,3 +1,5 @@
+// this file contains structs and methods that manage memory
+
 package cpu
 
 import (
@@ -8,12 +10,10 @@ type memoryController struct {
 	iCache cache // instruction cache
 	dCache cache // data cache
 	tlb    tlb   // level 0 tlb - normal pages
-
-	// metrics
-	cacheMisses uint64
-	accesses    uint64
 }
 
+// newMemoryController returns a new memory controller, complete with data
+// cache, instruction cache, and a tlb.
 func newMemoryController() memoryController {
 	return memoryController{
 		dCache: newCache(),
@@ -22,14 +22,10 @@ func newMemoryController() memoryController {
 	}
 }
 
-const (
-	cacheEnable = true
-)
-
-// Attempts to load a 4 byte instruction stored at virtual address `vAddr`.
-// If successful, returns `true, <instruction>`, `false, 0` otherwise.
+// loadInstruction attempts to load a 4 byte instruction stored at virtual
+// address `vAddr`.
+//   If successful, returns `true, instruction`, `false, 0` otherwise.
 func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
-	c.mc.accesses++
 	var inst uint32
 
 	if vAddr&0x3 != 0 { // address alignment
@@ -51,7 +47,6 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	}
 
 	if hit, instruction := c.mc.iCache.load(pAddr, 4); !hit {
-		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
 		c.mc.iCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
@@ -65,10 +60,12 @@ func (c *Core) loadInstruction(vAddr uint32) (bool, uint32) {
 	return true, inst
 }
 
-// loads up to 8 bytes
+// load will attempt to load `width` bytes from the virtual address `vAddr`.
+//   `vAddr` has to be aligned on a `width` byte boundary.
+//   On success, returns `true, v` where `v` is a uint64 and the requested data
+// is right-aligned in `v`.
+//   On failure, returns `false, 0`.
 func (c *Core) load(vAddr, width uint32) (bool, uint64) {
-	c.mc.accesses++
-
 	if vAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapLoadAddressMisaligned)
@@ -102,7 +99,6 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	}
 
 	if hit, v := c.mc.dCache.load(pAddr, width); !hit {
-		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
 		c.mc.dCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
@@ -114,9 +110,12 @@ func (c *Core) load(vAddr, width uint32) (bool, uint64) {
 	}
 }
 
+// store will attempt to store `width` bytes to the virtual address `vAddr`.
+//   `vAddr` has to be aligned on a `width` byte boundary.
+//   The value passed to store should be right-aligned in `v`.
+//   On success, returns `true`.
+//   On failure, returns `false`.
 func (c *Core) store(vAddr, width uint32, v uint64) bool {
-	c.mc.accesses++
-
 	if vAddr&(width-1) != 0 { // address alignment
 		c.csr[Csr_MTVAL] = vAddr
 		c.trap(TrapStoreAddressMisaligned)
@@ -156,7 +155,6 @@ func (c *Core) store(vAddr, width uint32, v uint64) bool {
 	}
 
 	if hit := c.mc.dCache.store(pAddr, width, v); !hit {
-		c.mc.cacheMisses++
 		lineNumber := pAddr >> cacheLineOffsetBits
 		c.system.Memory().Lock()
 		c.mc.dCache.replace(lineNumber, cacheFlagNone, c.system.Memory().data[:])
@@ -167,7 +165,8 @@ func (c *Core) store(vAddr, width uint32, v uint64) bool {
 	return true
 }
 
-// Return the byte stored at
+// loadByte attempts to load a single byte from the virtual address `vAddr`.
+//   This function is a wrapper for Core.load
 func (c *Core) loadByte(vAddr uint32) (bool, uint8) {
 	success, v := c.load(vAddr, 1)
 	return success, uint8(v)
@@ -204,60 +203,93 @@ func (c *Core) storeDoubleWord(vAddr uint32, dw uint64) bool {
 	return c.store(vAddr, 8, dw)
 }
 
-// load a word without translating the address first. Used for the page table walker
-func (c *Core) unsafeLoadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
-	c.mc.accesses++
-	return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
+// SC_W is intended to be used by a system to invalidate reservations that a
+// core may be holding.
+func (c *Core) SC_W() {
+	c.system.ReservationSets().Lock()
+	c.system.ReservationSets().unsafeInvalidateSingle(int(c.csr[Csr_MHARTID]), 0)
+	c.system.ReservationSets().Unlock()
 }
 
-func (c *Core) loadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
-	c.mc.accesses++
+// FENCE invalidates the data cache.
+func (c *Core) FENCE() {
+	c.system.Memory().Lock()
+	c.mc.dCache.writebackAll(c.system.Memory().data[:])
+	c.system.Memory().Unlock()
+	c.mc.dCache.invalidateAll()
+}
+
+// FENCE_I invalidates the instruction cache.
+func (c *Core) FENCE_I() {
+	c.mc.iCache.invalidateAll()
+}
+
+const (
+	SFENCE_VMA_ALL       uint32 = 0
+	SFENCE_VMA_ASID             = 1
+	SFENCE_VMA_ADDR             = 2
+	SFENCE_VMA_ASID_ADDR        = 3
+)
+
+// SFENCE_VMA invalidates translation caches (tlb).
+func (c *Core) SFENCE_VMA(asid, vAddr, flag uint32) {
+	// TODO discriminate on asid and vAddr depending on the flags
+	c.mc.tlb.invalidateAll()
+}
+
+// AtomicStoreWordPhysicalUncached will atomically store a single word `w` to
+// the physical address `pAddr`.
+//   Misaligned access causes this function to fail with `false`.
+//   Otherwise, the memory is locked, the word is written, and this function
+// returns `true`.
+//
+//   This function, along with Core.AtomicLoadWordPhysicalUncached should only
+// be used by the system when atomic access is required and access should be
+// uncached (such as when modifying the page table).
+//   In all other instances, systems should use the Core.Read and Core.Write
+// functions to access the virtual address space currently in use.
+func (c *Core) AtomicStoreWordPhysicalUncached(pAddr, w uint32) bool {
+	if pAddr&0x3 != 0 { // misaligned access
+		return false
+	}
+
+	var bytes [4]uint8
+	binary.LittleEndian.PutUint32(bytes[:], w)
+	c.system.Memory().Lock()
+	copy(c.system.Memory().data[pAddr:], bytes[:])
+	c.system.Memory().Unlock()
+	return true
+}
+
+// AtomicLoadWordPhysicalUncached will atomically load a single word from the
+// physical address `pAddr`.
+//   Misaligned access causes this function to fail with `false, 0`.
+//   Otherwise, the memory is locked, the word is written, and this function
+// returns `true, w` where `w` is the word.
+//
+//   This function, along with Core.AtomicStoreWordPhysicalUncached should only
+// be used by the system when atomic access is required and access should be
+// uncached (such as when modifying the page table).
+//   In all other instances, systems should use the Core.Read and Core.Write
+// functions to access the virtual address space currently in use.
+func (c *Core) AtomicLoadWordPhysicalUncached(pAddr uint32) (bool, uint32) {
+	if pAddr&0x3 != 0 { // misaligned access
+		return false, 0
+	}
+
 	c.system.Memory().Lock()
 	defer c.system.Memory().Unlock()
 	return true, binary.LittleEndian.Uint32(c.system.Memory().data[pAddr : pAddr+4])
 }
 
-// Writes the data cache to memory
-func (c *Core) DataCacheWriteback() {
-	c.system.Memory().Lock()
-	c.mc.dCache.writebackAll(c.system.Memory().data[:])
-	c.system.Memory().Unlock()
-}
-
-// Invalidates the data cache
-func (c *Core) DataCacheInvalidate() {
-	c.mc.dCache.invalidateAll()
-}
-
-// Invalidates the instruction cache
-func (c *Core) InstructionCacheInvalidate() {
-	c.mc.iCache.invalidateAll()
-}
-
-func (c *Core) TLBInvalidate() {
-	c.mc.tlb.invalidateAll()
-}
-
-// reads n bytes from the (possibly virtual) address addr and out
+// Read reads `n` bytes from the core's current address space (might be
+// virtual).
 func (c *Core) Read(addr, n uint32) (error, []uint8) {
-
-	return c.system.Memory().Read(addr, n)
+	panic("Core.Read not implemented!")
 }
 
+// Write writes len(data) bytes from the core's current address space
+// (might be virtual).
 func (c *Core) Write(addr uint32, data []uint8) (error, int) {
-	return c.system.Memory().Write(addr, data)
-}
-
-// Writeback and invalidate the data cache
-func (c *Core) CacheWritebackAndInvalidate() {
-	c.DataCacheWriteback()
-	c.DataCacheInvalidate()
-}
-
-func (c *Core) Misses() uint64 {
-	return c.mc.cacheMisses
-}
-
-func (c *Core) Accesses() uint64 {
-	return c.mc.accesses
+	panic("Core.Write not implemented!")
 }

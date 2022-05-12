@@ -26,10 +26,10 @@ The project is intended as a framework for teaching important concepts of operat
 
 The goals of this project are as follows:
 
-* Provide a simple yet realistic framework that students can explore and modify with their own components.
-* Give students an intuition about how real hardware functions in tandem with the operating system to accomplish certain tasks.
-* Be modular enough to allow anything to be implemented on top of the emulated operating system.
-    ** E.g. handling input, mmio, devices, writing a shell, a C runtime, etc.
+- Provide a simple yet realistic framework that students can explore and modify with their own components.
+- Give students an intuition about how real hardware functions in tandem with the operating system to accomplish certain tasks.
+- Be modular enough to allow anything to be implemented on top of the emulated operating system.
+    - E.g. handling input, mmio, devices, writing a shell, a C runtime, etc.
 
 A long-term goal is to be a valid alternative to established teaching operating systems such as Xv6. <<xv6>>
 The advantages of Xv6 is the low-level and real nature of everything that is done in it, but it is challenging to students who have only ever used Python and JavaScript.
@@ -41,17 +41,17 @@ Gotos aims to strike a middleground where students won't have to worry about the
 
 ==== riscv32g target
 
-* [*] RV32I base instructions (40/40)
-* [*] RV32M extension (8/8)
-* [*] RV32A extension (11/11)
-* [*] RV32F extension (26/26) non-compliant
-* [*] RV32D extension (26/26) non-compliant
-* [*] Zicsr extension (6/6)
-* [*] Zifencei extension (1/1)
+- [*] RV32I base instructions (40/40)
+- [*] RV32M extension (8/8)
+- [*] RV32A extension (11/11)
+- [*] RV32F extension (26/26) non-compliant
+- [*] RV32D extension (26/26) non-compliant
+- [*] Zicsr extension (6/6)
+- [*] Zifencei extension (1/1)
 
 ==== Peripherals
 
-* [ ] MMIO
+- [ ] MMIO
 
 === OS
 
@@ -73,39 +73,33 @@ Gotos aims to strike a middleground where students won't have to worry about the
 
 == Current state
 
-The `cpu` package contains an accurate RISC-V emulator for user mode.
-It also defines an interface for an accompanying `System` that has two methods:
-one method that should be run when a core boots and another that should be run when a processor traps.
-The `system` package contains minimal code for how _I_ believe a potential system should be defined.
-The labs build upon this system.
+Currently working on scheduler labs.
 
 == Fun jobs that need doing
 
-* [ ] Fully define the system interface (RISC-V EEI)
+- [ ] Fully define the system interface (RISC-V EEI)
 
-* [ ] Write an ELF parser to load programs (look at `debug/elf`)
+- [ ] Write an ELF parser to load programs (look at `debug/elf`)
 
-* [ ] Define a framework for the process labs
+- [ ] Define a framework for the process labs
 
-* [ ] Define a framework for the memory labs
+- [ ] Define a framework for the memory labs
 
-* [ ] Define a framework for the concurrency labs
+- [ ] Define a framework for the file system lab
 
-* [ ] Define a framework for the file system lab
+- [ ] Write companion book for gotos
 
-* [ ] Write companion book for gotos
-
-* [ ] Write companion book for the labs
+- [ ] Write companion book for the labs
 
 == Dirty (un-fun) jobs that need doing
 
-* [ ] Unit testing all instructions thoroughly.
+- [ ] Unit testing all instructions thoroughly.
 
-* [ ] Integration testing all instructions thoroughly.
+- [ ] Integration testing all instructions thoroughly.
 
-* [ ] Testing instruction decoding.
+- [ ] Testing instruction decoding.
 
-* [ ] Write thorough amount of tests for all labs to ensure students implementations are working.
+- [ ] Write thorough amount of tests for all labs to ensure students implementations are working.
 
 == Contributing
 
@@ -113,18 +107,10 @@ As this is an active thesis project, I'm uncertain of how much "help" I'm allowe
 However, feel free to pull the project, inspect the code, check for bugs etc..
 If you find any bugs (highly ilkely), I would appreciate an issue on GitLab or just a mail to mumblingdrunkard@protonmail.com.
 
-== Book
-
-I am writing a book to accompany this project which will serve as a walkthrough of all the lab-assignments as well as getting started with gotos in general.
-
-If you'd like to help be out by reading it and trying out the exercises/labs, send me an e-mail and I'll set up for you to get access to spurious versions of the book.
-Please do not distribute the book publicly as it may contain answers that should be kept confidential from students.
-If you share it, I will have to remove or create new exercises.
-
 == Authors and acknowledgment
 
 .Authors
-* mumblingdrunkard
+- mumblingdrunkard
 
 == License
 
@@ -133,22 +119,22 @@ This project is licensed under the traditional MIT license.
 [bibliography]
 == Bibliography
 
-* [[[rv5vol1]]] Andrew Waterman and Krste Asanović.
-  _RISC-V ISA Specification: Volume I, Unprivileged ISA v. 20191213_,
-  https://riscv.org/technical/specifications/ .
+- [[[rv5vol1]]] Andrew Waterman and Krste Asanović.
+    _RISC-V ISA Specification: Volume I, Unprivileged ISA v. 20191213_,
+    https://riscv.org/technical/specifications/ .
 
-* [[[rv5vol2]]] Andrew Waterman, Krste Asanović, and John Hauser.
-  _RISC-V ISA Specification: Volume II, Privileged Spec v. 20211203_,
-  https://riscv.org/technical/specifications/ .
+- [[[rv5vol2]]] Andrew Waterman, Krste Asanović, and John Hauser.
+    _RISC-V ISA Specification: Volume II, Privileged Spec v. 20211203_,
+    https://riscv.org/technical/specifications/ .
 
-* [[[nachos]]] Wayne A. Christopher, Steven J. Procter, and Thomas E. Anderson,
-  _The Nachos Instructional Operating System_,
-  https://homes.cs.washington.edu/~tom/nachos/ .
+- [[[nachos]]] Wayne A. Christopher, Steven J. Procter, and Thomas E. Anderson,
+    _The Nachos Instructional Operating System_,
+    https://homes.cs.washington.edu/~tom/nachos/ .
 
-* [[[rvemu]]] Asami Doi,
-  _rvemu: RISC-V Emulataor_,
-  https://github.com/d0iasm/rvemu
+- [[[rvemu]]] Asami Doi,
+    _rvemu: RISC-V Emulataor_,
+    https://github.com/d0iasm/rvemu
 
-* [[[xv6]]] Frans Kaashoek and Russ Cox,
-  _Xv6_
-  https://github.com/mit-pdos/xv6-riscv .
+- [[[xv6]]] Frans Kaashoek and Russ Cox,
+    _Xv6_
+    https://github.com/mit-pdos/xv6-riscv .

@@ -8,25 +8,16 @@ import (
 	"encoding/binary"
 )
 
-// Cache constants
+// Cache flags, cache lines can be dirty or stale
 const (
-	cacheLineLength     = 64   // must be equal to 2^CACHE_LINE_OFFSET_BITS (^ being power, not xor)
-	cacheLineOffsetBits = 6    // how many bits of the address are used for the offset within a cache-line
-	cacheLineOffsetMask = 0x3F // used to extract the offset in a cache line from an address
-	cacheLineCount      = 256  // how many cache lines the cache contains by default
-	cacheProbeDepth     = 2
-	cacheInvalidEntry   = 0xFFFFFFFF
+	cacheInvalidEntry       = 0xFFFFFFFF
+	cacheFlagNone     uint8 = 0x00 // no flags
+	cacheFlagAll            = 0xFF // all flags
+	cacheFlagDirty          = 0x01 // dirty flag - triggers a cache flush when replaced
+	cacheFlagStale          = 0x02 // stale flag - triggers/or should trigger a refresh when a stale line is accessed
 )
 
-// Cache flags
-const (
-	cacheFlagNone  uint8 = 0x00 // no flags
-	cacheFlagAll         = 0xFF // all flags
-	cacheFlagDirty       = 0x01 // dirty flag - triggers a cache flush when replaced
-	cacheFlagStale       = 0x02 // stale flag - triggers/or should trigger a refresh when a stale line is accessed
-)
-
-// A cacheLine contains
+// cacheLine consists of a number, some flags, and the data
 type cacheLine struct {
 	number uint32
 	flags  uint8
@@ -34,15 +25,21 @@ type cacheLine struct {
 }
 
 // cache is implemented as a hash-map with quadratic probing.
-// It will try probing a set number of times before giving up.
+//   It will try probing a set number of times before giving up.
+//   When it gives up, the candidate slots should be flushed/set stale
+// and the new line should be brought in from main memory at the first
+// position.
 type cache struct {
 	lines [cacheLineCount]cacheLine
 }
 
+// load will load a value from cache with a given width.
+//   It will fail/miss if the correct line is not in cache.
+//   Panics if address is not aligned to `width` bytes
 func (c *cache) load(address, width uint32) (bool, uint64) {
 	// Misaligned load from cache will always fail
 	if address&(width-1) != 0 {
-		return false, 0
+		panic("misaligned access to cache")
 	}
 
 	lineNumber := address >> cacheLineOffsetBits
@@ -73,10 +70,13 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 	return false, 0
 }
 
+// store will store a value into cache with a given width.
+//   It will fail/miss if the correct line is not in cache.
+//   Panics if address is not aligned to `width` bytes
 func (c *cache) store(address, width uint32, v uint64) bool {
 	// misaligned store will always miss
 	if address&(width-1) != 0 {
-		return false
+		panic("misaligned access to cache")
 	}
 
 	lineNumber := address >> cacheLineOffsetBits
@@ -113,9 +113,12 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 	return false
 }
 
-// attempts to load a line into cache
-// if it cannot find a vacant slot after a given number of probings, it ejects
-// all visited slots and loads the line into the first of these slots.
+// replace brings a line into cache at one of the candidate slots.
+//   Candidate slots are all slots that might hold the given line; e.g if the
+// probe depth is 2, there are 2 slots that any cache line might fit into.
+//   If all candidate slots are filled, they will be flushed and the line will
+// be placed in the first slot.
+//   If the line is already in cache, it will be refreshed by this.
 func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 	for i := uint32(0); i < cacheProbeDepth; i++ {
 		try := (lineNumber + i*i) & 0xFF
@@ -143,7 +146,7 @@ func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 		}
 	}
 
-	// no vacant slots, invalidate all slots
+	// no vacant slots, invalidate all candidate slots
 	for i := uint32(0); i < cacheProbeDepth; i++ {
 		try := (lineNumber + i*i) & 0xFF
 		if c.lines[try].flags&cacheFlagDirty == 1 {
@@ -163,7 +166,7 @@ func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 	return true
 }
 
-// Writes all cache-lines back to `dst`.
+// writebackAll writes all cache-lines back to `dst`.
 // Helpful if you want all other cores to see changes made by this core.
 func (c *cache) writebackAll(dst []uint8) int {
 	written := 0
@@ -182,7 +185,7 @@ func (c *cache) writebackAll(dst []uint8) int {
 	return written
 }
 
-// Marks all cache-lines as stale.
+// invalidateAll marks all cache-lines as stale.
 // Helpful if you want to guarantee that you can see updates made from other cores.
 func (c *cache) invalidateAll() {
 	for i := range c.lines {
@@ -191,6 +194,7 @@ func (c *cache) invalidateAll() {
 	}
 }
 
+// newCache returns a new cache filled with invalid (open) entries.
 func newCache() cache {
 	c := cache{}
 	for i := range c.lines {

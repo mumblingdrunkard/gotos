@@ -1,19 +1,19 @@
+// This file contains the `tlb` struct that is used to cache
+// virtual memory translations.
+
 package cpu
 
 const (
-	tlbSize = 256
-
 	// valid vpis will never have the leftmost bit set
 	// 9-bit asid, 22-bit vpn, 32-bit pte = 63 bits
 	tlbInvalidEntry = 0xFFFFFFFFFFFFFFFF
-
-	tlbProbeDepth = 3
 )
 
 type tlb struct {
 	entries [tlbSize]uint64
 }
 
+// load will attempt to locate a given virtual page index
 func (t *tlb) load(vpi uint32) (bool, uint32) {
 	for i := uint32(0); i < tlbProbeDepth; i++ {
 		v := t.entries[(vpi+i*i)&0xFF]

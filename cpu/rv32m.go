@@ -1,3 +1,7 @@
+// This file contains implementations of the instructions specified in
+// the M extension of the RISC-V unprivileged specification.
+//   Refer to the specification for instruction documentation.
+
 package cpu
 
 func (c *Core) mul(inst uint32) {

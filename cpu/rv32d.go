@@ -1,14 +1,27 @@
+// This file contains implementations of the instructions specified in
+// the D extension of the RISC-V unprivileged specification.
+//   Refer to the specification for instruction documentation.
+
+// WARNING This implementation is _NOT_ compliant with the RISC-V
+// specification.
+//   A compliant implementation can likely be made, but it is not a
+// priority.
+//   User/application mode programs should not depend on IEEE compliant
+// floating point numbers.
+//   A compliant implementation would likely also be much, much slower.
+//   Programs should also not depend on the state of the FCSR containing
+// correct exception flags.
+
 package cpu
 
 import "math"
 
-// WARNING This implementation is _NOT_ compliant with the RISC-V specification.
-// A compliant implementation can likely be made, but it is not a priority.
-// User/application mode programs should not depend on IEEE compliant floating point numbers.
-// A compliant implementation would likely also be much, much slower.
-// Programs should also not depend on the state of the FCSR containing correct exception flags.
-
 func (c *Core) fld(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	imm11_0 := uint32(int32(inst) >> 20)
@@ -19,6 +32,11 @@ func (c *Core) fld(inst uint32) {
 }
 
 func (c *Core) fsd(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
 	imm11_5 := uint32(int32(inst) >> 25)
@@ -30,6 +48,11 @@ func (c *Core) fsd(inst uint32) {
 }
 
 func (c *Core) fmadd_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -45,6 +68,11 @@ func (c *Core) fmadd_d(inst uint32) {
 }
 
 func (c *Core) fmsub_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -60,6 +88,11 @@ func (c *Core) fmsub_d(inst uint32) {
 }
 
 func (c *Core) fnmsub_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -75,6 +108,11 @@ func (c *Core) fnmsub_d(inst uint32) {
 }
 
 func (c *Core) fnmadd_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -90,6 +128,11 @@ func (c *Core) fnmadd_d(inst uint32) {
 }
 
 func (c *Core) fadd_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -103,6 +146,11 @@ func (c *Core) fadd_d(inst uint32) {
 }
 
 func (c *Core) fsub_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -116,6 +164,11 @@ func (c *Core) fsub_d(inst uint32) {
 }
 
 func (c *Core) fmul_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -129,6 +182,11 @@ func (c *Core) fmul_d(inst uint32) {
 }
 
 func (c *Core) fdiv_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -142,6 +200,11 @@ func (c *Core) fdiv_d(inst uint32) {
 }
 
 func (c *Core) fsqrt_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -160,6 +223,11 @@ func (c *Core) fsqrt_d(inst uint32) {
 }
 
 func (c *Core) fsgnj_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -173,6 +241,11 @@ func (c *Core) fsgnj_d(inst uint32) {
 }
 
 func (c *Core) fsgnjn_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -185,6 +258,11 @@ func (c *Core) fsgnjn_d(inst uint32) {
 }
 
 func (c *Core) fsgnjx_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -197,6 +275,11 @@ func (c *Core) fsgnjx_d(inst uint32) {
 }
 
 func (c *Core) fmin_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -210,6 +293,11 @@ func (c *Core) fmin_d(inst uint32) {
 }
 
 func (c *Core) fmax_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f
@@ -223,6 +311,11 @@ func (c *Core) fmax_d(inst uint32) {
 }
 
 func (c *Core) fcvt_s_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
@@ -233,6 +326,11 @@ func (c *Core) fcvt_s_d(inst uint32) {
 }
 
 func (c *Core) fcvt_d_s(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
@@ -243,6 +341,11 @@ func (c *Core) fcvt_d_s(inst uint32) {
 }
 
 func (c *Core) feq_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f // source fp register
@@ -253,12 +356,12 @@ func (c *Core) feq_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -268,6 +371,11 @@ func (c *Core) feq_d(inst uint32) {
 }
 
 func (c *Core) flt_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f // source fp register
@@ -278,12 +386,12 @@ func (c *Core) flt_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -293,6 +401,11 @@ func (c *Core) flt_d(inst uint32) {
 }
 
 func (c *Core) fle_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f // source fp register
@@ -303,12 +416,12 @@ func (c *Core) fle_d(inst uint32) {
 	c.reg[rd] = 0
 
 	if math.IsNaN(f1) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
+		c.csr[csr_FCSR] |= fcsrFlagNV // fuck it, always signaling
 		return
 	}
 
 	if math.IsNaN(f2) {
-		c.csr[Csr_FCSR] |= fcsrFlagNV
+		c.csr[csr_FCSR] |= fcsrFlagNV
 		return
 	}
 
@@ -318,6 +431,11 @@ func (c *Core) fle_d(inst uint32) {
 }
 
 func (c *Core) fclass_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 	rs2 := (inst >> 20) & 0x1f // source fp register
@@ -350,6 +468,11 @@ func (c *Core) fclass_d(inst uint32) {
 }
 
 func (c *Core) fcvt_w_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
@@ -361,6 +484,11 @@ func (c *Core) fcvt_w_d(inst uint32) {
 }
 
 func (c *Core) fcvt_wu_d(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
@@ -372,6 +500,11 @@ func (c *Core) fcvt_wu_d(inst uint32) {
 }
 
 func (c *Core) fcvt_d_w(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
@@ -381,6 +514,11 @@ func (c *Core) fcvt_d_w(inst uint32) {
 }
 
 func (c *Core) fcvt_d_wu(inst uint32) {
+	if !xDEnable {
+		c.csr[Csr_MTVAL] = inst
+		c.trap(TrapIllegalInstruction)
+		return
+	}
 	rd := (inst >> 7) & 0x1f
 	rs1 := (inst >> 15) & 0x1f
 
