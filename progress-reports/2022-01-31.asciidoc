@@ -1,0 +1,22 @@
+= Weekly progress summary 31. Jan. 2022
+
+.What I've done
+* I've created repositories for the labs and book and started defining an outline for the first few lab assignments.
+* I've been working on getting a good order going for when different components should be built.
+* E.g. scheduling before virtual memory before concurrency etc and how to accomplish this without large changes to the provided code between each assignment.
+* Cleaned up more parts of the code for clarity and more preparation for virtual memory.
+
+.Goals for the foreseeable future
+* Get some meat on the thesis/project report, deliverable is coming up quick.
+* Create a private fork of the repository to experiment with virtual memory and scheduling without leaking all the answers.
+    ** Write reference implementations and tests against these to ensure robustness of student code.
+    ** Clearly define what goes where.
+* Decide if the labs should be very "hand-holdy", giving away a lot of answers, opting instead to let students learn on their own if they want to.
+    ** I think this is the correct approach, lots of text to work through with code snippets, letting students figure out some small details, but also giving away much.
+       This makes the lab "easier", but will also let us include more content in each lab within the same time frame.
+       Although struggling a bit is valuable, I think struggling with address translation alone for 15 hours is slightly wasteful.
+* Could the labs perhaps alternate between low and high level?
+    ** E.g. one lab introduces processes and system calls, the next would be some Go code using those system calls
+        *** pipe for ipc
+    ** Pro: gives a good mix of "building the system" and "building _for_ the system".
+    ** Con: less time for low-level aspects.

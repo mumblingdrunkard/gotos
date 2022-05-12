@@ -1,0 +1,36 @@
+= Weekly progress summary 17. Jan. 2022
+
+== Generally re-arranged lots of code to clean up
+
+* Moved some stuff around, removed/commented unused constants, cleaned up namespaces etc. etc..
+
+* Started isolating the files that should be used for labs from the files that are used for implementation of the framework.
+
+* Added registers and filled them with values to handle certain traps.
+
+== Started looking into MMU framework.
+
+* RISC-V has a standardized set of formats for page tables to support hardware PT-walkers.
+  This may be a challenge to implement with simulation if students are supposed to implement their own walkers.
+  I propose to raise a new exception when a TLB-miss occurs to let OS-code handle it and not emulated hardware.
+  This would be non-standard, but doesn't change the process abstraction so it's "fine".
+
+* Could introduce segmentation as an introduction to virtual memory.
+  RISC-V doesn't actually support base-bound-segmented memory in the specification, but as we can do whatever we'd like, we can retrofit it on top with some custom exceptions.
+
+* Is it an issue that process memory is completely separate from kernel memory?
+  Processes use the `n` MiB slice/array for their memory.
+  Should the kernel too use this memory for its data structures or is it fine that it's not completely realistic?
+  Using RAM for kernel data structures would likely complicate things a whole lot.
+  ** Cons: Not complete realism.
+  ** Pros: Much easier to implement.
+
+== Started looking into process framework.
+
+* An ELF loader seems to be necessary for easy loading of applications.
+  The different segments could be extracted and placed into different parts of the process' address space.
+  `debug/elf` has some nice helpers to deal with ELF-files.
+
+* Many different exceptions could terminate the currently running process and signal the scheduler to do something about it; need to create a unified interface for this without too much clutter.
+
+* Need to create a decent scheduler interface that works for many different scheduler implementations.

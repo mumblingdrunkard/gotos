@@ -11,7 +11,7 @@ type Scheduler interface {
 }
 
 const (
-	timeSlice uint64 = 100000000000
+	timeSlice uint64 = 100000
 )
 
 // TODO, don't just restore PCB from current state

@@ -1,0 +1,24 @@
+= Progress report 28. Feb. 2022
+
+.What I've done
+* Fixed bugs
+* Shifted focus more towards writing
+    ** creating assignments
+    ** writing report
+    ** writing book
+* Decided to focus mainly on single core for the labs
+    ** multicore presents difficult challenges such as TLB synchronisation
+       This is likely way outside curriculum for a third semester OS course, so focusing on the important parts seems more prudent
+* Some changes to system interface
+    ** syscall number placed in `a0`
+    ** No `SetPC` method on `cpu`, returning from trap instead sets `c.pc = c.csr[Csr_MEPC]`
+        *** This mimics a real RISC-V system where `MRET` is used to return into user mode
+
+.Goals for this week
+* Flesh out report properly before first deliverable
+* Not much else, have other deadlines coming up which demand focus
+
+.Goals for the foreseeable future
+* Complete assignments 1&2, simple processes
+    ** Write adequate amount of tests for labs
+* Complete first 4 chapters of the book (the processor, processes, simple scheduling)

@@ -1,0 +1,5 @@
+= Progress report 22. Feb. 2022
+
+.What I've done
+* Experiment with and fix bugs in paged memory.
+* Start writing about Gotos' processor architecture.

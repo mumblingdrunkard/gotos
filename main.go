@@ -18,7 +18,7 @@ const (
 
 func main() {
 	// create a system with 1 core
-	sys := system.NewSystem(4)
+	sys := system.NewSystem(1)
 
 	// create a simple batch scheduler queue (FIFO)
 	fifo := &system.FIFO{}
@@ -45,7 +45,7 @@ func main() {
 
 	// load the program
 	// file, pc, sp, pid, addr
-	sys.Load("c-programs/fib/main.text", 0x00004000, 0x00006000, 0, 0x00004000, 0x00001000)
+	sys.Load("c-programs/locktest/main.text", 0x00004000, 0x00006000, 0, 0x00004000, 0x00001000)
 
 	// ---- PROCESS 1 ----
 	// top level page table
@@ -62,7 +62,7 @@ func main() {
 	page = tableToPage(scratchTable[:])
 	sys.Memory().WriteRaw(0x00007000, page[:])
 
-	sys.Load("c-programs/fib/main.text", 0x00004000, 0x00006000, 1, 0x00004000, 0x00006000)
+	sys.Load("c-programs/locktest/main.text", 0x00004000, 0x00006000, 1, 0x00004000, 0x00006000)
 
 	// ---- PROCESS 2 ----
 	// top level page table
@@ -79,7 +79,7 @@ func main() {
 	page = tableToPage(scratchTable[:])
 	sys.Memory().WriteRaw(0x0000A000, page[:])
 
-	sys.Load("c-programs/fib/main.text", 0x00004000, 0x00006000, 2, 0x00004000, 0x00009000)
+	sys.Load("c-programs/locktest/main.text", 0x00004000, 0x00006000, 2, 0x00004000, 0x00009000)
 
 	// ---- PROCESS 3 ----
 	// top level page table
@@ -96,7 +96,7 @@ func main() {
 	page = tableToPage(scratchTable[:])
 	sys.Memory().WriteRaw(0x0000D000, page[:])
 
-	sys.Load("c-programs/fib/main.text", 0x00004000, 0x00006000, 3, 0x00004000, 0x0000C000)
+	sys.Load("c-programs/locktest/main.text", 0x00004000, 0x00006000, 3, 0x00004000, 0x0000C000)
 
 	// run the system
 	sys.Run()

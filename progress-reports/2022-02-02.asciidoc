@@ -1,0 +1,12 @@
+= Daily progress report 02. Feb. 2022
+
+.What I've done
+* Added simple FIFO scheduling.
+* Added `System` interface for cpu.
+* Added a simple loader that uses physical addressing.
+* Experimented with multicore scheduling.
+    ** It kinda works!
+
+.Goals for next session
+* Decide how this integrates into labs.
+* Clean up code to present a neat framework for students.
