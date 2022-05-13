@@ -251,12 +251,10 @@ func (c *Core) beq(inst uint32) {
 			c.csr[Csr_MTVAL] = targetAddress
 			c.trap(TrapInstructionAddressMisaligned)
 			return
-		} else {
-			c.pc = targetAddress
-			c.jumped = true
 		}
+		c.pc = targetAddress
+		c.jumped = true
 	}
-
 }
 
 // branch not equal

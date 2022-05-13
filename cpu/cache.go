@@ -46,7 +46,7 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 	offset := address & cacheLineOffsetMask
 
 	for i := uint32(0); i < cacheProbeDepth; i++ {
-		try := (lineNumber + i*i) & 0xFF
+		try := (lineNumber + i*i) % cacheLineCount
 		if c.lines[try].number == lineNumber {
 			if c.lines[try].flags&cacheFlagStale != 0 {
 				return false, 0
@@ -58,7 +58,8 @@ func (c *cache) load(address, width uint32) (bool, uint64) {
 			case 2:
 				return true, uint64(binary.LittleEndian.Uint16(c.lines[try].data[offset : offset+2]))
 			case 4:
-				return true, uint64(binary.LittleEndian.Uint32(c.lines[try].data[offset : offset+4]))
+				return true, uint64(
+					binary.LittleEndian.Uint32(c.lines[try].data[offset : offset+4]))
 			case 8:
 				return true, binary.LittleEndian.Uint64(c.lines[try].data[offset : offset+8])
 			default:
@@ -83,7 +84,7 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 	offset := address & cacheLineOffsetMask
 
 	for i := uint32(0); i < cacheProbeDepth; i++ {
-		try := (lineNumber + i*i) & 0xFF
+		try := (lineNumber + i*i) % cacheLineCount
 		if c.lines[try].number == lineNumber {
 			if c.lines[try].flags&cacheFlagStale != 0 {
 				return false
@@ -121,7 +122,7 @@ func (c *cache) store(address, width uint32, v uint64) bool {
 //   If the line is already in cache, it will be refreshed by this.
 func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 	for i := uint32(0); i < cacheProbeDepth; i++ {
-		try := (lineNumber + i*i) & 0xFF
+		try := (lineNumber + i*i) % cacheLineCount
 		if c.lines[try].number == lineNumber {
 			if c.lines[try].flags&cacheFlagStale == 0 {
 				return false
@@ -136,7 +137,7 @@ func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 
 	// line was not present, try to find a place for it
 	for i := uint32(0); i < cacheProbeDepth; i++ {
-		try := (lineNumber + i*i) & 0xFF
+		try := (lineNumber + i*i) % cacheLineCount
 		if c.lines[try].number == cacheInvalidEntry {
 			address := lineNumber << cacheLineOffsetBits
 			c.lines[try].number = lineNumber
@@ -148,7 +149,7 @@ func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 
 	// no vacant slots, invalidate all candidate slots
 	for i := uint32(0); i < cacheProbeDepth; i++ {
-		try := (lineNumber + i*i) & 0xFF
+		try := (lineNumber + i*i) % cacheLineCount
 		if c.lines[try].flags&cacheFlagDirty == 1 {
 			address := c.lines[try].number << cacheLineOffsetBits
 			copy(src[address:], c.lines[try].data[:])
@@ -158,7 +159,7 @@ func (c *cache) replace(lineNumber uint32, flags uint8, src []uint8) bool {
 	}
 
 	// finally, a vacant space is guaranteed
-	try := lineNumber & 0xFF
+	try := lineNumber % cacheLineCount
 	address := lineNumber << cacheLineOffsetBits
 	c.lines[try].number = lineNumber
 	copy(c.lines[try].data[:], src[address:address+cacheLineLength])

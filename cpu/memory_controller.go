@@ -219,8 +219,11 @@ func (c *Core) FENCE() {
 	c.mc.dCache.invalidateAll()
 }
 
-// FENCE_I invalidates the instruction cache.
+// FENCE_I flushes written data and invalidates the instruction cache.
 func (c *Core) FENCE_I() {
+	c.system.Memory().Lock()
+	c.mc.dCache.writebackAll(c.system.Memory().data[:])
+	c.system.Memory().Unlock()
 	c.mc.iCache.invalidateAll()
 }
 
